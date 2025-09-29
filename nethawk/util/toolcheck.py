@@ -84,12 +84,24 @@ def check_dependencies() -> bool:
         if not available:
             missing_tools.append(tool)
     
+    # Check airodump tools (required for wireless operations)
+    airodump_results = check_tool_group("airodump")
+    for tool, available in airodump_results.items():
+        if not available:
+            missing_tools.append(tool)
+    
+    # Check cracking tools (required for password cracking)
+    cracking_results = check_tool_group("cracking")
+    for tool, available in cracking_results.items():
+        if not available:
+            missing_tools.append(tool)
+    
     if missing_tools:
-        logger.error(f"Missing required tools: {', '.join(missing_tools)}")
+        logger.error(f"Missing tools: {', '.join(missing_tools)}")
         return False
     
     # Check optional tools and warn
-    optional_groups = ["airodump", "cracking", "scanning"]
+    optional_groups = ["scanning"]
     for group in optional_groups:
         group_results = check_tool_group(group)
         missing_optional = [tool for tool, available in group_results.items() if not available]
