@@ -71,28 +71,14 @@ fi
 # Install Python dependencies
 echo -e "${BLUE}🐍 Installing Python dependencies...${NC}"
 
-# Check if we're in a virtual environment
-if [[ "$VIRTUAL_ENV" != "" ]]; then
-    echo -e "${BLUE}📦 Virtual environment detected: $VIRTUAL_ENV${NC}"
-    if pip install -r requirements.txt; then
-        echo -e "${GREEN}✅ Python dependencies installed in virtual environment${NC}"
-    else
-        echo -e "${RED}❌ Failed to install Python dependencies in virtual environment${NC}"
-        exit 1
-    fi
+# Always use pip (not pip3) and never use --user in virtual environments
+if pip install -r requirements.txt; then
+    echo -e "${GREEN}✅ Python dependencies installed successfully${NC}"
 else
-    # Not in virtual environment, try multiple methods
-    if pip3 install --user -r requirements.txt 2>/dev/null; then
-        echo -e "${GREEN}✅ Python dependencies installed with --user flag${NC}"
-    elif pip3 install --break-system-packages -r requirements.txt 2>/dev/null; then
-        echo -e "${GREEN}✅ Python dependencies installed with --break-system-packages${NC}"
-    else
-        echo -e "${YELLOW}⚠️  Failed to install Python dependencies automatically${NC}"
-        echo -e "${BLUE}💡 Try one of these methods:${NC}"
-        echo "  1. Create virtual environment: python3 -m venv nethawk_env && source nethawk_env/bin/activate && pip install -r requirements.txt"
-        echo "  2. Use --break-system-packages: pip3 install --break-system-packages -r requirements.txt"
-        echo "  3. Use --user flag: pip3 install --user -r requirements.txt"
-    fi
+    echo -e "${RED}❌ Failed to install Python dependencies${NC}"
+    echo -e "${BLUE}💡 Manual installation:${NC}"
+    echo "  pip install rich psutil requests"
+    exit 1
 fi
 
 echo -e "${GREEN}✅ Setup complete!${NC}"
