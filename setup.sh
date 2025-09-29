@@ -26,6 +26,10 @@ echo -e "${BLUE}📦 Installing system dependencies...${NC}"
 sudo apt update
 sudo apt install -y python3 python3-pip python3-venv aircrack-ng hashcat hcxtools iw iproute2 git wget
 
+# Install additional tools for cap2hccapx
+echo -e "${BLUE}🔧 Installing additional tools...${NC}"
+sudo apt install -y hcxtools
+
 # Install Python dependencies
 echo -e "${BLUE}🐍 Installing Python dependencies...${NC}"
 pip3 install --user -r requirements.txt
