@@ -1,5 +1,5 @@
 #!/bin/bash
-# NetHawk Professional Installation Script
+# NetHawk Standalone Installation Script
 # Downloads and installs NetHawk from GitHub
 
 set -e
@@ -120,9 +120,6 @@ setup_user() {
 install_python_deps() {
     echo -e "${BLUE}🐍 Setting up Python virtual environment...${NC}"
     
-    # Get the directory where this script is located
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    
     # Create virtual environment
     python3 -m venv ~/.nethawk/venv
     
@@ -130,9 +127,9 @@ install_python_deps() {
     source ~/.nethawk/venv/bin/activate
     pip install --upgrade pip setuptools wheel
     
-    # Install requirements from the script directory
+    # Install requirements from the downloaded directory
     echo -e "${BLUE}📚 Installing Python dependencies...${NC}"
-    pip install -r "$SCRIPT_DIR/requirements.txt"
+    pip install -r ~/.nethawk/requirements.txt
     
     # Deactivate
     deactivate
@@ -142,26 +139,22 @@ install_python_deps() {
 create_executable() {
     echo -e "${BLUE}🔧 Creating system executable...${NC}"
     
-    # Get the directory where this script is located
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    
     # Create the main executable
-    cat > ~/.nethawk/nethawk << EOF
+    cat > ~/.nethawk/nethawk << 'EOF'
 #!/bin/bash
 # NetHawk Professional Launcher
 
 # Get the directory where this script is located
-SCRIPT_DIR="$(cd "$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$SCRIPT_DIR"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Activate virtual environment
-source "\$SCRIPT_DIR/venv/bin/activate"
+source "$SCRIPT_DIR/venv/bin/activate"
 
 # Change to project directory
-cd "\$PROJECT_DIR"
+cd "$SCRIPT_DIR"
 
 # Run NetHawk with all arguments
-python3 -m nethawk "\$@"
+python3 -m nethawk "$@"
 
 # Deactivate virtual environment
 deactivate
