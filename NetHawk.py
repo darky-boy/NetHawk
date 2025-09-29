@@ -818,9 +818,9 @@ class NetHawk:
                 # Start the scan in background
                 process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
                 
-                # Show progress for up to 10 minutes
-                for i in range(600):  # 10 minutes max
-                    progress.update(task, description=f"Scanning {target}... {i+1}/600s")
+                # Show progress for up to 5 minutes (reduced timeout)
+                for i in range(300):  # 5 minutes max
+                    progress.update(task, description=f"Scanning {target}... {i+1}/300s")
                     time.sleep(1)
                     
                     # Check if process finished
@@ -922,9 +922,34 @@ class NetHawk:
         console.print(f"[blue]Starting web application scan on {target_url}...[/blue]")
         
         try:
-            # Run nikto scan
-            cmd = ["nikto", "-h", target_url, "-Format", "json", "-output", os.path.join(self.vulns_path, f"nikto_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")]
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            # Run nikto scan with progress
+            output_file = os.path.join(self.vulns_path, f"nikto_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
+            cmd = ["nikto", "-h", target_url, "-Format", "json", "-output", output_file]
+            
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TimeElapsedColumn(),
+                console=console
+            ) as progress:
+                task = progress.add_task("Scanning web application...", total=100)
+                
+                # Start nikto in background
+                process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                
+                # Show progress for up to 5 minutes
+                for i in range(300):  # 5 minutes max
+                    progress.update(task, description=f"Scanning {target_url}... {i+1}/300s")
+                    time.sleep(1)
+                    
+                    # Check if process finished
+                    if process.poll() is not None:
+                        break
+                
+                # Get results
+                stdout, stderr = process.communicate()
+                result = type('obj', (object,), {'returncode': process.returncode, 'stdout': stdout, 'stderr': stderr})()
             
             if result.returncode == 0:
                 console.print(f"[green]✓ Web application scan completed![/green]")
@@ -953,9 +978,33 @@ class NetHawk:
         console.print(f"[blue]Starting SMB enumeration on {target}...[/blue]")
         
         try:
-            # Run enum4linux
+            # Run enum4linux with progress
             cmd = ["enum4linux", "-a", target]
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TimeElapsedColumn(),
+                console=console
+            ) as progress:
+                task = progress.add_task("Enumerating SMB services...", total=100)
+                
+                # Start enum4linux in background
+                process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                
+                # Show progress for up to 5 minutes
+                for i in range(300):  # 5 minutes max
+                    progress.update(task, description=f"Enumerating {target}... {i+1}/300s")
+                    time.sleep(1)
+                    
+                    # Check if process finished
+                    if process.poll() is not None:
+                        break
+                
+                # Get results
+                stdout, stderr = process.communicate()
+                result = type('obj', (object,), {'returncode': process.returncode, 'stdout': stdout, 'stderr': stderr})()
             
             if result.returncode == 0:
                 # Save results
@@ -989,23 +1038,38 @@ class NetHawk:
         console.print(f"[blue]Starting DNS reconnaissance on {domain}...[/blue]")
         
         try:
-            # Run DNS queries
+            # Run DNS queries with progress
             dns_results = {}
             
-            # A records
-            result = subprocess.run(["dig", domain, "A"], capture_output=True, text=True, timeout=30)
-            if result.returncode == 0:
-                dns_results["A_records"] = result.stdout
-            
-            # MX records
-            result = subprocess.run(["dig", domain, "MX"], capture_output=True, text=True, timeout=30)
-            if result.returncode == 0:
-                dns_results["MX_records"] = result.stdout
-            
-            # NS records
-            result = subprocess.run(["dig", domain, "NS"], capture_output=True, text=True, timeout=30)
-            if result.returncode == 0:
-                dns_results["NS_records"] = result.stdout
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TimeElapsedColumn(),
+                console=console
+            ) as progress:
+                task = progress.add_task("Performing DNS reconnaissance...", total=3)
+                
+                # A records
+                progress.update(task, description=f"Querying A records for {domain}...")
+                result = subprocess.run(["dig", domain, "A"], capture_output=True, text=True, timeout=30)
+                if result.returncode == 0:
+                    dns_results["A_records"] = result.stdout
+                progress.advance(task)
+                
+                # MX records
+                progress.update(task, description=f"Querying MX records for {domain}...")
+                result = subprocess.run(["dig", domain, "MX"], capture_output=True, text=True, timeout=30)
+                if result.returncode == 0:
+                    dns_results["MX_records"] = result.stdout
+                progress.advance(task)
+                
+                # NS records
+                progress.update(task, description=f"Querying NS records for {domain}...")
+                result = subprocess.run(["dig", domain, "NS"], capture_output=True, text=True, timeout=30)
+                if result.returncode == 0:
+                    dns_results["NS_records"] = result.stdout
+                progress.advance(task)
             
             # Save results
             output_file = os.path.join(self.logs_path, f"dns_recon_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
