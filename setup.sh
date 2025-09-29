@@ -37,19 +37,40 @@ if command -v cap2hccapx >/dev/null 2>&1; then
 else
     echo -e "${YELLOW}⚠️  cap2hccapx not found in PATH${NC}"
     echo -e "${BLUE}🔍 Checking if hcxtools provides cap2hccapx...${NC}"
+    
+    # Try to refresh PATH
+    hash -r
+    
+    # Check common locations
     if [ -f "/usr/bin/cap2hccapx" ]; then
         echo -e "${GREEN}✅ cap2hccapx found in /usr/bin/${NC}"
+        echo -e "${BLUE}💡 Adding to PATH...${NC}"
+        export PATH="/usr/bin:$PATH"
     elif [ -f "/usr/local/bin/cap2hccapx" ]; then
         echo -e "${GREEN}✅ cap2hccapx found in /usr/local/bin/${NC}"
+        echo -e "${BLUE}💡 Adding to PATH...${NC}"
+        export PATH="/usr/local/bin:$PATH"
     else
         echo -e "${YELLOW}⚠️  cap2hccapx not found, but hcxtools is installed${NC}"
-        echo -e "${BLUE}💡 You may need to restart your terminal or run 'hash -r'${NC}"
+        echo -e "${BLUE}💡 Try running: hash -r && which cap2hccapx${NC}"
+        echo -e "${BLUE}💡 Or restart your terminal${NC}"
     fi
 fi
 
 # Install Python dependencies
 echo -e "${BLUE}🐍 Installing Python dependencies...${NC}"
-pip3 install --user -r requirements.txt
+# Try multiple methods for Python dependency installation
+if pip3 install --user -r requirements.txt 2>/dev/null; then
+    echo -e "${GREEN}✅ Python dependencies installed with --user flag${NC}"
+elif pip3 install --break-system-packages -r requirements.txt 2>/dev/null; then
+    echo -e "${GREEN}✅ Python dependencies installed with --break-system-packages${NC}"
+else
+    echo -e "${YELLOW}⚠️  Failed to install Python dependencies automatically${NC}"
+    echo -e "${BLUE}💡 Try one of these methods:${NC}"
+    echo "  1. Create virtual environment: python3 -m venv nethawk_env && source nethawk_env/bin/activate && pip install -r requirements.txt"
+    echo "  2. Use --break-system-packages: pip3 install --break-system-packages -r requirements.txt"
+    echo "  3. Use --user flag: pip3 install --user -r requirements.txt"
+fi
 
 echo -e "${GREEN}✅ Setup complete!${NC}"
 echo ""
