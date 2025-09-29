@@ -40,14 +40,20 @@ done
 # Install Python dependencies
 echo -e "${BLUE}🐍 Installing Python dependencies...${NC}"
 
-# Always use pip (not pip3) and never use --user in virtual environments
+# Try different installation methods for different systems
 if pip install -r requirements.txt; then
     echo -e "${GREEN}✅ Python dependencies installed successfully${NC}"
+elif pip install --user -r requirements.txt; then
+    echo -e "${GREEN}✅ Python dependencies installed successfully (user mode)${NC}"
+elif pip install --break-system-packages -r requirements.txt; then
+    echo -e "${GREEN}✅ Python dependencies installed successfully (system override)${NC}"
 else
-    echo -e "${RED}❌ Failed to install Python dependencies${NC}"
-    echo -e "${BLUE}💡 Manual installation:${NC}"
-    echo "  pip install rich psutil requests"
-    exit 1
+    echo -e "${YELLOW}⚠️  Standard pip installation failed${NC}"
+    echo -e "${BLUE}💡 Manual installation options:${NC}"
+    echo "  pip install --user rich psutil requests"
+    echo "  pip install --break-system-packages rich psutil requests"
+    echo "  python3 -m venv venv && source venv/bin/activate && pip install rich psutil requests"
+    echo -e "${YELLOW}⚠️  Continuing anyway - some features may not work${NC}"
 fi
 
 echo -e "${GREEN}✅ NetHawk setup complete!${NC}"

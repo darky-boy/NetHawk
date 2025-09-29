@@ -105,12 +105,24 @@ class NetHawk:
         self.tools_available = {}
         missing_tools = []
         
-        for tool, package in required_tools.items():
-            if shutil.which(tool):
-                self.tools_available[tool] = True
-            else:
-                self.tools_available[tool] = False
-                missing_tools.append(f"{tool} (install: {package})")
+        # Show progress for tool checking
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TimeElapsedColumn(),
+            console=console
+        ) as progress:
+            task = progress.add_task("Checking tools...", total=len(required_tools))
+            
+            for tool, package in required_tools.items():
+                progress.update(task, description=f"Checking {tool}...")
+                if shutil.which(tool):
+                    self.tools_available[tool] = True
+                else:
+                    self.tools_available[tool] = False
+                    missing_tools.append(f"{tool} (install: {package})")
+                progress.advance(task)
         
         if missing_tools:
             console.print(f"[yellow]Missing tools: {', '.join(missing_tools)}[/yellow]")
@@ -298,8 +310,22 @@ class NetHawk:
             
             process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             
-            # Let it run for the specified duration
-            time.sleep(duration)
+            # Show progress bar for scan duration
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TimeElapsedColumn(),
+                console=console
+            ) as progress:
+                task = progress.add_task("Scanning WiFi networks...", total=duration)
+                
+                for i in range(duration):
+                    progress.update(task, description=f"Scanning... {i+1}/{duration}s")
+                    time.sleep(1)
+                
+                progress.update(task, description="Scan complete!")
+            
             process.terminate()
             process.wait()
             
@@ -699,8 +725,21 @@ class NetHawk:
                 deauth_cmd = ["aireplay-ng", "--deauth", str(deauth_count), "-a", bssid, monitor_iface]
                 deauth_process = subprocess.Popen(deauth_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             
-            # Let it run for a reasonable time
-            time.sleep(30)
+            # Show progress for handshake capture
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TimeElapsedColumn(),
+                console=console
+            ) as progress:
+                task = progress.add_task("Capturing handshake...", total=30)
+                
+                for i in range(30):
+                    progress.update(task, description=f"Capturing... {i+1}/30s")
+                    time.sleep(1)
+                
+                progress.update(task, description="Capture complete!")
             
             # Stop processes
             airodump_process.terminate()
@@ -738,9 +777,33 @@ class NetHawk:
         console.print(f"[blue]Starting vulnerability assessment on {target}...[/blue]")
         
         try:
-            # Run vulnerability scan
+            # Run vulnerability scan with progress
             cmd = ["nmap", "-T4", "--script", "vuln", "-sV", target]
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+            
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TimeElapsedColumn(),
+                console=console
+            ) as progress:
+                task = progress.add_task("Running vulnerability scan...", total=100)
+                
+                # Start the scan in background
+                process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                
+                # Show progress for up to 10 minutes
+                for i in range(600):  # 10 minutes max
+                    progress.update(task, description=f"Scanning {target}... {i+1}/600s")
+                    time.sleep(1)
+                    
+                    # Check if process finished
+                    if process.poll() is not None:
+                        break
+                
+                # Get results
+                stdout, stderr = process.communicate()
+                result = type('obj', (object,), {'returncode': process.returncode, 'stdout': stdout, 'stderr': stderr})()
             
             if result.returncode == 0:
                 # Parse vulnerabilities
