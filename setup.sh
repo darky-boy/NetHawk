@@ -28,7 +28,7 @@ sudo apt install -y python3 python3-pip python3-venv aircrack-ng hashcat hcxtool
 
 # Install Python dependencies
 echo -e "${BLUE}🐍 Installing Python dependencies...${NC}"
-pip3 install --user rich psutil requests argparse
+pip3 install --user -r requirements.txt
 
 echo -e "${GREEN}✅ Setup complete!${NC}"
 echo ""
