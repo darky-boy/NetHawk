@@ -24,22 +24,22 @@ fi
 # Install system dependencies
 echo -e "${BLUE}📦 Installing system dependencies...${NC}"
 
-# Detect distribution and install appropriate packages
+# Install essential packages only (skip network-manager for now)
+echo -e "${BLUE}📦 Installing essential packages...${NC}"
 if command -v apt >/dev/null 2>&1; then
     # Debian/Ubuntu
     sudo apt update
-    sudo apt install -y python3 python3-pip python3-venv aircrack-ng hashcat hcxtools iw iproute2 network-manager git wget
+    sudo apt install -y python3 python3-pip python3-venv aircrack-ng hashcat hcxtools iw iproute2 git wget
 elif command -v pacman >/dev/null 2>&1; then
     # Arch Linux
-    sudo pacman -S --noconfirm python python-pip python-virtualenv aircrack-ng hashcat hcxtools iw iproute2 networkmanager git wget
+    sudo pacman -S --noconfirm python python-pip python-virtualenv aircrack-ng hashcat hcxtools iw iproute2 git wget
 elif command -v dnf >/dev/null 2>&1; then
     # Fedora/CentOS/RHEL
-    sudo dnf install -y python3 python3-pip python3-virtualenv aircrack-ng hashcat hcxtools iw iproute2 NetworkManager git wget
+    sudo dnf install -y python3 python3-pip python3-virtualenv aircrack-ng hashcat hcxtools iw iproute2 git wget
 else
     echo -e "${YELLOW}⚠️  Unknown package manager. Please install manually:${NC}"
     echo "   - python3, python3-pip, python3-venv"
     echo "   - aircrack-ng, hashcat, hcxtools, iw, iproute2"
-    echo "   - network-manager (or networkmanager)"
     echo "   - git, wget"
 fi
 
