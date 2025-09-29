@@ -63,6 +63,8 @@ echo ""
 
 # Step 6: Create Executable
 echo -e "${BLUE}🔧 Step 6: Creating NetHawk executable...${NC}"
+# Remove the nethawk directory if it exists to avoid conflict
+rm -rf nethawk
 cat > nethawk << 'EOF'
 #!/bin/bash
 cd ~/.nethawk
