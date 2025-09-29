@@ -1,5 +1,5 @@
-# NetHawk Simple Requirements
-# Essential dependencies only
+# NetHawk v3.0 AGGRESSIVE Requirements
+# Professional penetration testing dependencies
 
 rich>=13.0.0
 psutil>=5.9.0

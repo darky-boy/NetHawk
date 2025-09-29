@@ -22,51 +22,20 @@ if [[ $EUID -eq 0 ]]; then
 fi
 
 # Install system dependencies
-echo -e "${BLUE}📦 Installing system dependencies...${NC}"
+echo -e "${BLUE}📦 Installing AGGRESSIVE system dependencies...${NC}"
 sudo apt update
-sudo apt install -y python3 python3-pip python3-venv aircrack-ng hashcat hcxtools iw iproute2 git wget
+sudo apt install -y python3 python3-pip python3-venv aircrack-ng iw iproute2 nmap masscan nikto gobuster enum4linux samba-client dnsutils git wget
 
-# Install additional tools for cap2hccapx
-echo -e "${BLUE}🔧 Installing additional tools...${NC}"
-sudo apt install -y hcxtools
-
-# Check if cap2hccapx is available
-echo -e "${BLUE}🔍 Verifying tools...${NC}"
-if command -v cap2hccapx >/dev/null 2>&1; then
-    echo -e "${GREEN}✅ cap2hccapx is available${NC}"
-else
-    echo -e "${YELLOW}⚠️  cap2hccapx not found in PATH${NC}"
-    echo -e "${BLUE}🔍 Checking if hcxtools provides cap2hccapx...${NC}"
-    
-    # Try to refresh PATH
-    hash -r
-    
-    # Check common locations
-    if [ -f "/usr/bin/cap2hccapx" ]; then
-        echo -e "${GREEN}✅ cap2hccapx found in /usr/bin/${NC}"
-        echo -e "${BLUE}💡 Adding to PATH...${NC}"
-        export PATH="/usr/bin:$PATH"
-    elif [ -f "/usr/local/bin/cap2hccapx" ]; then
-        echo -e "${GREEN}✅ cap2hccapx found in /usr/local/bin/${NC}"
-        echo -e "${BLUE}💡 Adding to PATH...${NC}"
-        export PATH="/usr/local/bin:$PATH"
+# Verify tools are available
+echo -e "${BLUE}🔍 Verifying AGGRESSIVE tools...${NC}"
+tools=("airodump-ng" "nmap" "masscan" "nikto" "gobuster" "enum4linux")
+for tool in "${tools[@]}"; do
+    if command -v "$tool" >/dev/null 2>&1; then
+        echo -e "${GREEN}✅ $tool is available${NC}"
     else
-        echo -e "${YELLOW}⚠️  cap2hccapx not found, but hcxtools is installed${NC}"
-        echo -e "${BLUE}🔍 Searching for cap2hccapx...${NC}"
-        
-        # Search for cap2hccapx in common locations
-        CAP2HCCAPX_PATH=$(find /usr -name "cap2hccapx" 2>/dev/null | head -1)
-        if [ -n "$CAP2HCCAPX_PATH" ]; then
-            echo -e "${GREEN}✅ cap2hccapx found at: $CAP2HCCAPX_PATH${NC}"
-            echo -e "${BLUE}💡 Adding to PATH...${NC}"
-            export PATH="$(dirname $CAP2HCCAPX_PATH):$PATH"
-        else
-            echo -e "${YELLOW}⚠️  cap2hccapx not found in common locations${NC}"
-            echo -e "${BLUE}💡 Try running: hash -r && which cap2hccapx${NC}"
-            echo -e "${BLUE}💡 Or restart your terminal${NC}"
-        fi
+        echo -e "${YELLOW}⚠️  $tool not found${NC}"
     fi
-fi
+done
 
 # Install Python dependencies
 echo -e "${BLUE}🐍 Installing Python dependencies...${NC}"
