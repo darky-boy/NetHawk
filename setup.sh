@@ -22,12 +22,12 @@ if [[ $EUID -eq 0 ]]; then
 fi
 
 # Install system dependencies
-echo -e "${BLUE}📦 Installing AGGRESSIVE system dependencies...${NC}"
+echo -e "${BLUE}📦 Installing NetHawk dependencies...${NC}"
 sudo apt update
-sudo apt install -y python3 python3-pip python3-venv aircrack-ng iw iproute2 nmap masscan nikto gobuster enum4linux samba-client dnsutils git wget
+sudo apt install -y python3 python3-pip aircrack-ng iw iproute2 nmap masscan nikto gobuster enum4linux samba-client dnsutils
 
 # Verify tools are available
-echo -e "${BLUE}🔍 Verifying AGGRESSIVE tools...${NC}"
+echo -e "${BLUE}🔍 Verifying NetHawk tools...${NC}"
 tools=("airodump-ng" "nmap" "masscan" "nikto" "gobuster" "enum4linux")
 for tool in "${tools[@]}"; do
     if command -v "$tool" >/dev/null 2>&1; then
@@ -50,11 +50,10 @@ else
     exit 1
 fi
 
-echo -e "${GREEN}✅ Setup complete!${NC}"
+echo -e "${GREEN}✅ NetHawk setup complete!${NC}"
 echo ""
 echo -e "${YELLOW}Usage:${NC}"
 echo "  python3 NetHawk.py                    # Run NetHawk"
-echo "  python3 NetHawk.py --help             # Show help"
 echo "  sudo python3 NetHawk.py               # Run with full privileges"
 echo ""
-echo -e "${BLUE}That's it! Simple and easy! 🦅${NC}"
+echo -e "${BLUE}NetHawk is ready! 🦅${NC}"

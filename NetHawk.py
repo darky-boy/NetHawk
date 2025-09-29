@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-NetHawk v3.0 - AGGRESSIVE Linux Network Security Tool
-Professional reconnaissance with aggressive scanning techniques
+NetHawk - Linux Network Security Tool
+Professional reconnaissance and penetration testing
 """
 
 import os
@@ -29,10 +29,10 @@ from rich import print as rprint
 console = Console()
 
 class NetHawk:
-    """AGGRESSIVE NetHawk application - Professional reconnaissance capabilities."""
+    """NetHawk application - Professional reconnaissance capabilities."""
     
     def __init__(self):
-        """Initialize NetHawk with aggressive session management."""
+        """Initialize NetHawk with session management."""
         self.config = self._load_config()
         self.session_number = self._get_next_session_number()
         self.session_path = os.path.abspath(f"sessions/session_{self.session_number}")
@@ -134,18 +134,18 @@ class NetHawk:
                                                                                                                                                                                                                                                                                                                                                                                                                 
         """
         
-        console.print(Panel(logo, title="[bold red]NetHawk v3.0 - AGGRESSIVE[/bold red]", 
-                           subtitle="[italic]Professional Network Penetration Testing Tool[/italic]"))
+        console.print(Panel(logo, title="[bold blue]NetHawk[/bold blue]", 
+                           subtitle="[italic]Professional Network Security Tool[/italic]"))
         console.print()
     
     def display_main_menu(self):
         """Display the main menu with options."""
         menu_text = """
-[bold cyan]AGGRESSIVE Menu[/bold cyan]
+[bold cyan]Main Menu[/bold cyan]
 
-[bold]1.[/bold] AGGRESSIVE Passive WiFi Scan
-[bold]2.[/bold] AGGRESSIVE Active Network Scan  
-[bold]3.[/bold] Advanced Handshake Capture + Deauth
+[bold]1.[/bold] Passive WiFi Scan
+[bold]2.[/bold] Active Network Scan  
+[bold]3.[/bold] Handshake Capture + Deauth
 [bold]4.[/bold] Vulnerability Assessment
 [bold]5.[/bold] Web Application Scanning
 [bold]6.[/bold] SMB/Windows Enumeration
@@ -157,7 +157,7 @@ class NetHawk:
 [italic]Path: {path}[/italic]
         """.format(session=f"session_{self.session_number}", path=self.session_path)
         
-        console.print(Panel(menu_text, title="[bold red]NetHawk AGGRESSIVE Menu[/bold red]"))
+        console.print(Panel(menu_text, title="[bold green]NetHawk Menu[/bold green]"))
     
     def validate_input(self, prompt, choices):
         """Validate user input against available choices."""
