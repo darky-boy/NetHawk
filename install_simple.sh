@@ -24,7 +24,7 @@ fi
 # Install system dependencies
 echo -e "${BLUE}📦 Installing system dependencies...${NC}"
 sudo apt update
-sudo apt install -y python3 python3-pip python3-venv aircrack-ng hashcat hcxtools iw iproute2 nmcli git wget
+sudo apt install -y python3 python3-pip python3-venv aircrack-ng hashcat hcxtools iw iproute2 nmcli git
 
 # Create directory
 echo -e "${BLUE}📁 Creating NetHawk directory...${NC}"
