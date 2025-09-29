@@ -258,6 +258,11 @@ class NetHawk:
                     return iface
             else:
                 console.print(f"[red]Failed to set monitor mode: {result.stderr}[/red]")
+                console.print(f"[yellow]Try these solutions:[/yellow]")
+                console.print(f"[blue]1. sudo airmon-ng check kill[/blue]")
+                console.print(f"[blue]2. sudo ifconfig {iface} down[/blue]")
+                console.print(f"[blue]3. sudo iwconfig {iface} mode monitor[/blue]")
+                console.print(f"[blue]4. Check if another process is using {iface}[/blue]")
                 return None
                 
         except Exception as e:
