@@ -52,24 +52,47 @@ else
         export PATH="/usr/local/bin:$PATH"
     else
         echo -e "${YELLOW}⚠️  cap2hccapx not found, but hcxtools is installed${NC}"
-        echo -e "${BLUE}💡 Try running: hash -r && which cap2hccapx${NC}"
-        echo -e "${BLUE}💡 Or restart your terminal${NC}"
+        echo -e "${BLUE}🔍 Searching for cap2hccapx...${NC}"
+        
+        # Search for cap2hccapx in common locations
+        CAP2HCCAPX_PATH=$(find /usr -name "cap2hccapx" 2>/dev/null | head -1)
+        if [ -n "$CAP2HCCAPX_PATH" ]; then
+            echo -e "${GREEN}✅ cap2hccapx found at: $CAP2HCCAPX_PATH${NC}"
+            echo -e "${BLUE}💡 Adding to PATH...${NC}"
+            export PATH="$(dirname $CAP2HCCAPX_PATH):$PATH"
+        else
+            echo -e "${YELLOW}⚠️  cap2hccapx not found in common locations${NC}"
+            echo -e "${BLUE}💡 Try running: hash -r && which cap2hccapx${NC}"
+            echo -e "${BLUE}💡 Or restart your terminal${NC}"
+        fi
     fi
 fi
 
 # Install Python dependencies
 echo -e "${BLUE}🐍 Installing Python dependencies...${NC}"
-# Try multiple methods for Python dependency installation
-if pip3 install --user -r requirements.txt 2>/dev/null; then
-    echo -e "${GREEN}✅ Python dependencies installed with --user flag${NC}"
-elif pip3 install --break-system-packages -r requirements.txt 2>/dev/null; then
-    echo -e "${GREEN}✅ Python dependencies installed with --break-system-packages${NC}"
+
+# Check if we're in a virtual environment
+if [[ "$VIRTUAL_ENV" != "" ]]; then
+    echo -e "${BLUE}📦 Virtual environment detected: $VIRTUAL_ENV${NC}"
+    if pip install -r requirements.txt; then
+        echo -e "${GREEN}✅ Python dependencies installed in virtual environment${NC}"
+    else
+        echo -e "${RED}❌ Failed to install Python dependencies in virtual environment${NC}"
+        exit 1
+    fi
 else
-    echo -e "${YELLOW}⚠️  Failed to install Python dependencies automatically${NC}"
-    echo -e "${BLUE}💡 Try one of these methods:${NC}"
-    echo "  1. Create virtual environment: python3 -m venv nethawk_env && source nethawk_env/bin/activate && pip install -r requirements.txt"
-    echo "  2. Use --break-system-packages: pip3 install --break-system-packages -r requirements.txt"
-    echo "  3. Use --user flag: pip3 install --user -r requirements.txt"
+    # Not in virtual environment, try multiple methods
+    if pip3 install --user -r requirements.txt 2>/dev/null; then
+        echo -e "${GREEN}✅ Python dependencies installed with --user flag${NC}"
+    elif pip3 install --break-system-packages -r requirements.txt 2>/dev/null; then
+        echo -e "${GREEN}✅ Python dependencies installed with --break-system-packages${NC}"
+    else
+        echo -e "${YELLOW}⚠️  Failed to install Python dependencies automatically${NC}"
+        echo -e "${BLUE}💡 Try one of these methods:${NC}"
+        echo "  1. Create virtual environment: python3 -m venv nethawk_env && source nethawk_env/bin/activate && pip install -r requirements.txt"
+        echo "  2. Use --break-system-packages: pip3 install --break-system-packages -r requirements.txt"
+        echo "  3. Use --user flag: pip3 install --user -r requirements.txt"
+    fi
 fi
 
 echo -e "${GREEN}✅ Setup complete!${NC}"
