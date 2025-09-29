@@ -1317,6 +1317,7 @@ def main():
         console.print("[red]NetHawk is designed for Linux systems only.[/red]")
         console.print("[yellow]This tool requires Linux-specific wireless tools and kernel modules.[/yellow]")
         console.print(f"[blue]Current platform: {sys.platform}[/blue]")
+        console.print("[yellow]Please run on a Linux system for full functionality.[/yellow]")
         sys.exit(1)
     
     # Check for root privileges
