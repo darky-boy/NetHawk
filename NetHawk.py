@@ -818,13 +818,14 @@ class NetHawk:
                 # Start the scan in background
                 process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
                 
-                # Show progress for up to 5 minutes (reduced timeout)
-                for i in range(300):  # 5 minutes max
-                    progress.update(task, description=f"Scanning {target}... {i+1}/300s")
+                # Show progress with longer timeout for vulnerability scans
+                for i in range(600):  # 10 minutes max for vulnerability scans
+                    progress.update(task, description=f"Scanning {target}... {i+1}/600s")
                     time.sleep(1)
                     
                     # Check if process finished
                     if process.poll() is not None:
+                        progress.update(task, description="Scan completed!")
                         break
                 
                 # Get results
@@ -938,13 +939,14 @@ class NetHawk:
                 # Start nikto in background
                 process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
                 
-                # Show progress for up to 5 minutes
-                for i in range(300):  # 5 minutes max
-                    progress.update(task, description=f"Scanning {target_url}... {i+1}/300s")
+                # Show progress with longer timeout for web scans
+                for i in range(600):  # 10 minutes max for web scans
+                    progress.update(task, description=f"Scanning {target_url}... {i+1}/600s")
                     time.sleep(1)
                     
                     # Check if process finished
                     if process.poll() is not None:
+                        progress.update(task, description="Web scan completed!")
                         break
                 
                 # Get results
@@ -953,9 +955,17 @@ class NetHawk:
             
             if result.returncode == 0:
                 console.print(f"[green]✓ Web application scan completed![/green]")
-                console.print(f"[blue]Results saved to: {cmd[-1]}[/blue]")
+                console.print(f"[blue]Results saved to: {output_file}[/blue]")
+                
+                # Show some results if available
+                if result.stdout:
+                    console.print(f"[yellow]Scan output:[/yellow]")
+                    console.print(result.stdout[:500] + "..." if len(result.stdout) > 500 else result.stdout)
             else:
                 console.print(f"[red]Web application scan failed: {result.stderr}[/red]")
+                if result.stdout:
+                    console.print(f"[yellow]Partial output:[/yellow]")
+                    console.print(result.stdout[:300] + "..." if len(result.stdout) > 300 else result.stdout)
                 
         except subprocess.TimeoutExpired:
             console.print("[yellow]Web application scan timed out[/yellow]")
@@ -993,13 +1003,14 @@ class NetHawk:
                 # Start enum4linux in background
                 process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
                 
-                # Show progress for up to 5 minutes
-                for i in range(300):  # 5 minutes max
-                    progress.update(task, description=f"Enumerating {target}... {i+1}/300s")
+                # Show progress with longer timeout for SMB scans
+                for i in range(600):  # 10 minutes max for SMB scans
+                    progress.update(task, description=f"Enumerating {target}... {i+1}/600s")
                     time.sleep(1)
                     
                     # Check if process finished
                     if process.poll() is not None:
+                        progress.update(task, description="SMB enumeration completed!")
                         break
                 
                 # Get results
