@@ -211,10 +211,30 @@ class NetHawk:
     def _check_monitor_mode_support(self, iface):
         """Check if interface supports monitor mode."""
         try:
+            # First check if interface exists and is wireless
             result = subprocess.run(["iw", iface, "info"], capture_output=True, text=True, timeout=5)
-            return "monitor" in result.stdout.lower()
+            if result.returncode != 0:
+                return False
+            
+            # Check if it's a wireless interface
+            if "type" not in result.stdout.lower():
+                return False
+            
+            # Try to set monitor mode to test if it's supported
+            test_result = subprocess.run(["iw", iface, "set", "type", "monitor"], 
+                                       capture_output=True, text=True, timeout=5)
+            
+            if test_result.returncode == 0:
+                # Restore to managed mode
+                subprocess.run(["iw", iface, "set", "type", "managed"], 
+                             capture_output=True, timeout=5)
+                return True
+            else:
+                return False
+                
         except Exception:
-            return False
+            # If we can't test, assume it might work and let airmon-ng handle it
+            return True
     
     def _set_monitor_mode(self, iface):
         """Set interface to monitor mode."""
@@ -278,10 +298,11 @@ class NetHawk:
         )
         iface = interfaces[int(iface_choice)-1]
         
-        # Check monitor mode support
+        # Check monitor mode support (but be flexible)
         if not self._check_monitor_mode_support(iface):
-            console.print(f"[red]{iface} does not support monitor mode.[/red]")
-            return
+            console.print(f"[yellow]Warning: {iface} may not support monitor mode.[/yellow]")
+            if not Confirm.ask("Continue anyway? (airmon-ng will try to enable monitor mode)"):
+                return
         
         # Set monitor mode
         monitor_iface = self._set_monitor_mode(iface)
