@@ -138,7 +138,6 @@ class NetHawk:
             "aireplay-ng", 
             "aircrack-ng",
             "hashcat",
-            "hcxtools",
             "cap2hccapx",
             "iw",
             "ip"
@@ -151,11 +150,11 @@ class NetHawk:
                 missing_tools.append(tool)
         
         if missing_tools:
-            console.print(f"[red]Missing tools: {', '.join(missing_tools)}[/red]")
-            console.print("[yellow]Please install missing dependencies before continuing.[/yellow]")
+            console.print(f"[yellow]Missing tools: {', '.join(missing_tools)}[/yellow]")
+            console.print("[blue]Some features may not work without these tools.[/blue]")
             console.print("[blue]Install with: sudo apt install aircrack-ng hashcat hcxtools iw iproute2[/blue]")
-            console.print("[blue]For cap2hccapx: sudo apt install hcxtools[/blue]")
-            return False
+            console.print("[green]Continuing anyway...[/green]")
+            return True  # Continue anyway instead of blocking
         else:
             console.print("[green]All Linux dependencies found![/green]")
             return True
