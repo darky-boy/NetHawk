@@ -8,17 +8,26 @@
 
 ## 🚀 Quick Start
 
-### One-Line Installation
+### ⚡ One-Line Installation (Recommended)
 ```bash
 curl -sSL https://raw.githubusercontent.com/darky-boy/NetHawk/master/install.sh | bash
 ```
 
-### Manual Installation
+### 📋 Manual Installation
 ```bash
 git clone https://github.com/darky-boy/NetHawk.git
 cd NetHawk
 chmod +x install.sh
 ./install.sh
+```
+
+### 🎯 After Installation
+```bash
+# Run NetHawk (Interactive mode like Metasploit)
+sudo nethawk
+
+# Or use command line mode (like Nmap)
+sudo nethawk --help
 ```
 
 ## ✨ Features
