@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nethawk"
+version = "1.0.0"
+description = "Terminal-first Linux reconnaissance toolkit for ethical pentesting & labs"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "NetHawk Team", email = "team@nethawk.dev"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+    "Topic :: System :: Networking",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "rich>=13.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+]
+full = [
+    "scapy>=2.5.0",
+    "python-dotenv>=1.0.0",
+    "requests>=2.31.0",
+    "colorama>=0.4.6",
+]
+
+[project.scripts]
+nethawk = "nethawk.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/nethawk/nethawk"
+Repository = "https://github.com/nethawk/nethawk"
+Documentation = "https://nethawk.readthedocs.io"
+"Bug Tracker" = "https://github.com/nethawk/nethawk/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["nethawk*"]
+
+[tool.setuptools.package-data]
+nethawk = ["*.json", "*.txt", "*.md"]
+
+[tool.black]
+line-length = 100
+target-version = ['py310']
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true

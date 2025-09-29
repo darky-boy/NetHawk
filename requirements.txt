@@ -1,0 +1,11 @@
+# NetHawk Requirements
+# Auto-generated skeleton - core dependencies for NetHawk toolkit
+
+# Core dependencies
+rich>=13.0.0
+
+# Optional dependencies (uncomment as needed)
+# scapy>=2.5.0          # For advanced packet manipulation
+# python-dotenv>=1.0.0  # For environment variable management
+# requests>=2.31.0      # For API calls (vendor lookup, etc.)
+# colorama>=0.4.6       # For cross-platform colored output
