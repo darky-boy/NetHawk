@@ -365,6 +365,10 @@ class NetHawk:
                 for i in range(duration):
                     progress.update(task, description=f"Scanning... {i+1}/{duration}s")
                     time.sleep(1)
+                    
+                    # Show some activity every 10 seconds
+                    if i % 10 == 0 and i > 0:
+                        console.print(f"[blue]Scanning in progress... {i}s elapsed[/blue]")
                 
                 progress.update(task, description="Scan complete!")
             
@@ -372,7 +376,13 @@ class NetHawk:
             process.wait()
             
             # Parse CSV results
+            console.print(f"[blue]Parsing scan results...[/blue]")
             self._parse_aggressive_passive_results(output_file)
+            
+            # Show summary
+            console.print(f"[green]✓ Passive scan completed![/green]")
+            console.print(f"[blue]Results saved to: {output_file}*[/blue]")
+            console.print(f"[yellow]Check the CSV files for detailed results[/yellow]")
             
         except KeyboardInterrupt:
             console.print("\n[yellow]Scan stopped by user.[/yellow]")
@@ -387,6 +397,15 @@ class NetHawk:
         csv_file = f"{output_file}-01.csv"
         if not os.path.exists(csv_file):
             console.print("[red]No CSV results found.[/red]")
+            console.print(f"[yellow]Looking for: {csv_file}[/yellow]")
+            console.print(f"[blue]Available files in {self.logs_path}:[/blue]")
+            try:
+                files = os.listdir(self.logs_path)
+                for f in files:
+                    if f.startswith("aggressive_passive"):
+                        console.print(f"  - {f}")
+            except:
+                pass
             return
         
         try:
@@ -439,10 +458,17 @@ class NetHawk:
                             continue
             
             # Display results
+            console.print(f"[green]Found {len(aps)} access points and {len(clients)} clients[/green]")
+            
             if aps:
                 self._display_aggressive_ap_table(aps)
+            else:
+                console.print("[yellow]No access points found. Try scanning longer or check if WiFi is active.[/yellow]")
+            
             if clients:
                 self._display_aggressive_client_table(clients)
+            else:
+                console.print("[yellow]No clients found. This is normal if no devices are connected.[/yellow]")
             
             # Save to JSON
             self._save_aggressive_passive_results(aps, clients, output_file)
