@@ -138,7 +138,6 @@ class NetHawk:
             "aireplay-ng", 
             "aircrack-ng",
             "hashcat",
-            "cap2hccapx",
             "iw",
             "ip"
         ]
@@ -704,16 +703,12 @@ class NetHawk:
                             cmd.extend(["-b", bssid])
                         cmd.append(cap_path)
                     else:  # hashcat
-                        # Check if cap2hccapx exists
-                        if not shutil.which("cap2hccapx"):
-                            console.print("[red]cap2hccapx not found. Please install hcxtools.[/red]")
-                            continue
-                        
-                        # Convert .cap to .hccapx using cap2hccapx
+                        # Convert .cap to .hccapx (will try cap2hccapx first, then pyrit)
                         hccapx_path = cap_path.replace(".cap", ".hccapx")
                         console.print(f"[blue]Converting {cap_file} to .hccapx format...[/blue]")
                         try:
-                            subprocess.run(["cap2hccapx", cap_path, hccapx_path], check=True)
+                            from nethawk.modules.crack import convert_cap_to_hccapx
+                            convert_cap_to_hccapx(cap_path, hccapx_path)
                             console.print(f"[green]✓ Conversion successful: {hccapx_path}[/green]")
                         except subprocess.CalledProcessError:
                             console.print(f"[red]Failed to convert {cap_file} to .hccapx format[/red]")

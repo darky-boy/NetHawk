@@ -27,7 +27,7 @@ REQUIRED_TOOLS = {
     "core": ["python3", "ping"],
     "wireless": ["iw", "ip"],
     "airodump": ["airodump-ng", "aireplay-ng", "aircrack-ng"],
-    "cracking": ["hashcat", "cap2hccapx"],
+    "cracking": ["hashcat"],
     "scanning": ["nmap"]  # Optional but recommended
 }
 
