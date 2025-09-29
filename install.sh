@@ -93,9 +93,33 @@ download_nethawk() {
     git clone https://github.com/darky-boy/NetHawk.git
     cd NetHawk
     
-    # Copy to user directory
-    cp -r * ~/.nethawk/
+    # Copy all files to user directory
+    cp -r * ~/.nethawk/ 2>/dev/null || true
     cp -r .* ~/.nethawk/ 2>/dev/null || true
+    
+    # Ensure requirements.txt exists
+    if [[ ! -f ~/.nethawk/requirements.txt ]]; then
+        echo -e "${YELLOW}⚠️  Creating requirements.txt...${NC}"
+        cat > ~/.nethawk/requirements.txt << 'EOF'
+# NetHawk Professional Requirements
+rich>=13.0.0
+psutil>=5.9.0
+requests>=2.28.0
+argparse
+scapy>=2.5.0
+netifaces>=0.11.0
+python-nmap>=0.7.1
+pandas>=1.5.0
+numpy>=1.24.0
+jinja2>=3.1.0
+weasyprint>=59.0
+click>=8.1.0
+colorama>=0.4.6
+tabulate>=0.9.0
+distro>=1.8.0
+packaging>=23.0
+EOF
+    fi
     
     # Clean up
     cd ~
@@ -120,9 +144,6 @@ setup_user() {
 install_python_deps() {
     echo -e "${BLUE}🐍 Setting up Python virtual environment...${NC}"
     
-    # Get the directory where this script is located
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    
     # Create virtual environment
     python3 -m venv ~/.nethawk/venv
     
@@ -130,9 +151,14 @@ install_python_deps() {
     source ~/.nethawk/venv/bin/activate
     pip install --upgrade pip setuptools wheel
     
-    # Install requirements from the script directory
+    # Install requirements from the downloaded directory
     echo -e "${BLUE}📚 Installing Python dependencies...${NC}"
-    pip install -r "$SCRIPT_DIR/requirements.txt"
+    if [[ -f ~/.nethawk/requirements.txt ]]; then
+        pip install -r ~/.nethawk/requirements.txt
+    else
+        echo -e "${YELLOW}⚠️  requirements.txt not found, installing core dependencies manually...${NC}"
+        pip install rich psutil requests argparse scapy netifaces python-nmap pandas numpy jinja2 weasyprint click colorama tabulate distro packaging
+    fi
     
     # Deactivate
     deactivate
