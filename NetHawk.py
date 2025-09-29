@@ -309,15 +309,31 @@ class NetHawk:
             if not Confirm.ask("Continue anyway? (airmon-ng will try to enable monitor mode)"):
                 return
         
-        # Set monitor mode
-        monitor_iface = self._set_monitor_mode(iface)
-        if not monitor_iface:
-            return
-        
-        # AGGRESSIVE scan options
-        console.print("\n[bold]AGGRESSIVE Scan Options:[/bold]")
-        duration = IntPrompt.ask("Scan duration (seconds)", default=60)
-        channels = Prompt.ask("Channels to scan (e.g., 1,6,11 or all)", default="all")
+        # Set monitor mode with progress
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TimeElapsedColumn(),
+            console=console
+        ) as progress:
+            task = progress.add_task("Setting up interface...", total=3)
+            
+            progress.update(task, description="Setting monitor mode...")
+            monitor_iface = self._set_monitor_mode(iface)
+            if not monitor_iface:
+                return
+            progress.advance(task)
+            
+            progress.update(task, description="Configuring scan options...")
+            # AGGRESSIVE scan options
+            console.print("\n[bold]AGGRESSIVE Scan Options:[/bold]")
+            duration = IntPrompt.ask("Scan duration (seconds)", default=60)
+            channels = Prompt.ask("Channels to scan (e.g., 1,6,11 or all)", default="all")
+            progress.advance(task)
+            
+            progress.update(task, description="Preparing scan...")
+            progress.advance(task)
         
         # Start AGGRESSIVE passive scan
         console.print(f"[blue]Starting AGGRESSIVE scan on {monitor_iface}...[/blue]")
@@ -512,10 +528,24 @@ class NetHawk:
             network = ipaddress.IPv4Network(target, strict=False)
             console.print(f"[blue]AGGRESSIVE scanning network: {network}[/blue]")
             
-            # AGGRESSIVE scan options
-            console.print("\n[bold]AGGRESSIVE Scan Options:[/bold]")
-            port_range = Prompt.ask("Port range (e.g., 1-1000, top1000, all)", default="top1000")
-            scan_type = Prompt.ask("Scan type (fast/aggressive/comprehensive)", default="aggressive")
+            # AGGRESSIVE scan options with progress
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TimeElapsedColumn(),
+                console=console
+            ) as progress:
+                task = progress.add_task("Configuring active scan...", total=2)
+                
+                progress.update(task, description="Setting scan parameters...")
+                console.print("\n[bold]AGGRESSIVE Scan Options:[/bold]")
+                port_range = Prompt.ask("Port range (e.g., 1-1000, top1000, all)", default="top1000")
+                scan_type = Prompt.ask("Scan type (fast/aggressive/comprehensive)", default="aggressive")
+                progress.advance(task)
+                
+                progress.update(task, description="Preparing network scan...")
+                progress.advance(task)
             
             # Perform AGGRESSIVE scan
             hosts = self._aggressive_host_discovery(network)
