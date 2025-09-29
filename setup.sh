@@ -30,6 +30,23 @@ sudo apt install -y python3 python3-pip python3-venv aircrack-ng hashcat hcxtool
 echo -e "${BLUE}🔧 Installing additional tools...${NC}"
 sudo apt install -y hcxtools
 
+# Check if cap2hccapx is available
+echo -e "${BLUE}🔍 Verifying tools...${NC}"
+if command -v cap2hccapx >/dev/null 2>&1; then
+    echo -e "${GREEN}✅ cap2hccapx is available${NC}"
+else
+    echo -e "${YELLOW}⚠️  cap2hccapx not found in PATH${NC}"
+    echo -e "${BLUE}🔍 Checking if hcxtools provides cap2hccapx...${NC}"
+    if [ -f "/usr/bin/cap2hccapx" ]; then
+        echo -e "${GREEN}✅ cap2hccapx found in /usr/bin/${NC}"
+    elif [ -f "/usr/local/bin/cap2hccapx" ]; then
+        echo -e "${GREEN}✅ cap2hccapx found in /usr/local/bin/${NC}"
+    else
+        echo -e "${YELLOW}⚠️  cap2hccapx not found, but hcxtools is installed${NC}"
+        echo -e "${BLUE}💡 You may need to restart your terminal or run 'hash -r'${NC}"
+    fi
+fi
+
 # Install Python dependencies
 echo -e "${BLUE}🐍 Installing Python dependencies...${NC}"
 pip3 install --user -r requirements.txt
