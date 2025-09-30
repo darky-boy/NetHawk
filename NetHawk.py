@@ -1318,7 +1318,7 @@ class NetHawk:
             
         except KeyboardInterrupt:
             console.print("\n[yellow]Capture stopped by user.[/yellow]")
-                except Exception as e:
+        except Exception as e:
             console.print(f"[red]Error during advanced capture: {e}[/red]")
         finally:
             # Restore managed mode
