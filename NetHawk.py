@@ -328,8 +328,11 @@ class NetHawk:
             progress.update(task, description="Configuring scan options...")
             # AGGRESSIVE scan options
             console.print("\n[bold]AGGRESSIVE Scan Options:[/bold]")
-            duration = IntPrompt.ask("Scan duration (seconds)", default=60)
             channels = Prompt.ask("Channels to scan (e.g., 1,6,11 or all)", default="all")
+            console.print(f"[yellow]Channels: {channels}[/yellow]")
+            console.print(f"[blue]Interface: {monitor_iface}[/blue]")
+            console.print(f"[green]Ready to scan! Press Enter to start...[/green]")
+            input()  # Wait for user to press Enter
             progress.advance(task)
             
             progress.update(task, description="Preparing scan...")
@@ -337,43 +340,62 @@ class NetHawk:
         
         # Start AGGRESSIVE passive scan
         console.print(f"[blue]Starting AGGRESSIVE scan on {monitor_iface}...[/blue]")
-        console.print(f"[yellow]Duration: {duration}s, Channels: {channels}[/yellow]")
-        console.print("[yellow]Press Ctrl+C to stop scanning[/yellow]")
+        console.print(f"[yellow]Channels: {channels}[/yellow]")
+        console.print("[green]Scanning for WiFi networks...[/green]")
         
         try:
-            # Use airodump-ng for AGGRESSIVE scanning
+            # Use airodump-ng for AGGRESSIVE scanning with better parameters
             output_file = os.path.join(self.logs_path, f"aggressive_passive_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
-            cmd = ["airodump-ng", "-w", output_file, "--output-format", "csv", "--manufacturer", "--uptime", "--wps"]
+            cmd = ["airodump-ng", "-w", output_file, "--output-format", "csv", "--manufacturer", "--uptime", "--wps", "--beacons", "--ivs"]
             
             if channels != "all":
                 cmd.extend(["-c", channels])
             
             cmd.append(monitor_iface)
             
+            # Start the scan process
             process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             
-            # Show progress bar for scan duration
-            with Progress(
-                SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                BarColumn(),
-                TimeElapsedColumn(),
-                console=console
-            ) as progress:
-                task = progress.add_task("Scanning WiFi networks...", total=duration)
-                
-                for i in range(duration):
-                    progress.update(task, description=f"Scanning... {i+1}/{duration}s")
+            # Real-time network discovery
+            console.print(f"[blue]🔍 Scanning for networks...[/blue]")
+            console.print(f"[yellow]Found networks will appear below:[/yellow]")
+            console.print("=" * 80)
+            console.print("[yellow]Press Ctrl+C to stop scanning[/yellow]")
+            
+            # Monitor for networks in real-time
+            networks_found = 0
+            last_update = 0
+            
+            try:
+                while True:
+                    # Check if process is still running
+                    if process.poll() is not None:
+                        break
+                    
+                    # Check for new CSV data every 5 seconds
+                    current_time = time.time()
+                    if current_time - last_update >= 5:
+                        csv_file = f"{output_file}-01.csv"
+                        if os.path.exists(csv_file):
+                            try:
+                                # Parse and display new networks
+                                new_networks = self._parse_live_networks(csv_file)
+                                if new_networks > networks_found:
+                                    networks_found = new_networks
+                                    console.print(f"[green]📡 Found {networks_found} networks so far...[/green]")
+                            except:
+                                pass
+                        last_update = current_time
+                    
                     time.sleep(1)
                     
-                    # Show some activity every 10 seconds
-                    if i % 10 == 0 and i > 0:
-                        console.print(f"[blue]Scanning in progress... {i}s elapsed[/blue]")
-                
-                progress.update(task, description="Scan complete!")
+            except KeyboardInterrupt:
+                console.print(f"\n[yellow]Scan stopped by user (Ctrl+C)[/yellow]")
             
+            # Stop the process
             process.terminate()
             process.wait()
+            console.print(f"[green]✓ Scan completed! Found {networks_found} networks[/green]")
             
             # Parse CSV results
             console.print(f"[blue]Parsing scan results...[/blue]")
@@ -392,6 +414,22 @@ class NetHawk:
             # Restore managed mode
             self._restore_managed_mode(monitor_iface)
     
+    def _parse_live_networks(self, csv_file):
+        """Parse live networks from CSV file and return count."""
+        try:
+            with open(csv_file, 'r') as f:
+                lines = f.readlines()
+            
+            # Count networks (skip header and empty lines)
+            count = 0
+            for line in lines:
+                if line.strip() and not line.startswith('BSSID'):
+                    count += 1
+            
+            return count
+        except:
+            return 0
+
     def _parse_aggressive_passive_results(self, output_file):
         """Parse airodump-ng CSV results with enhanced data."""
         csv_file = f"{output_file}-01.csv"
