@@ -253,7 +253,7 @@ class NetHawk:
             return True  # Always let airmon-ng try
     
     def _set_monitor_mode(self, iface):
-        """Set interface to monitor mode with better error handling."""
+        """Set interface to monitor mode with aggressive methods."""
         try:
             console.print(f"[blue]Setting {iface} to monitor mode...[/blue]")
             
@@ -262,10 +262,8 @@ class NetHawk:
             subprocess.run(["airmon-ng", "check", "kill"], capture_output=True, timeout=10)
             time.sleep(2)  # Give processes time to stop
             
-            # Try multiple methods to set monitor mode
-            console.print(f"[blue]Attempting to set monitor mode...[/blue]")
-            
             # Method 1: Try airmon-ng
+            console.print(f"[blue]Method 1: Trying airmon-ng...[/blue]")
             result = subprocess.run(["airmon-ng", "start", iface], capture_output=True, text=True, timeout=15)
             
             if result.returncode == 0:
@@ -279,11 +277,11 @@ class NetHawk:
                     console.print(f"[green]✓ Monitor mode enabled on {iface}[/green]")
                     return iface
             else:
-                console.print(f"[yellow]airmon-ng failed, trying alternative method...[/yellow]")
+                console.print(f"[yellow]airmon-ng failed, trying alternative methods...[/yellow]")
                 console.print(f"[blue]Error: {result.stderr}[/blue]")
                 
                 # Method 2: Try direct iw command
-                console.print(f"[blue]Trying direct iw command...[/blue]")
+                console.print(f"[blue]Method 2: Trying direct iw command...[/blue]")
                 iw_result = subprocess.run(["iw", iface, "set", "type", "monitor"], 
                                          capture_output=True, text=True, timeout=10)
                 
@@ -291,19 +289,49 @@ class NetHawk:
                     console.print(f"[green]✓ Direct iw command succeeded[/green]")
                     return iface
                 else:
-                    console.print(f"[red]Both methods failed[/red]")
-                    console.print(f"[blue]airmon-ng error: {result.stderr}[/blue]")
+                    console.print(f"[yellow]iw command failed, trying iwconfig...[/yellow]")
                     console.print(f"[blue]iw error: {iw_result.stderr}[/blue]")
                     
-                    # Show troubleshooting tips
-                    console.print(f"\n[yellow]🔧 Troubleshooting Tips:[/yellow]")
-                    console.print(f"[blue]1. Make sure you're running as root: sudo python3 NetHawk.py[/blue]")
-                    console.print(f"[blue]2. Check if interface is already in use: iwconfig[/blue]")
-                    console.print(f"[blue]3. Try restarting NetworkManager: sudo systemctl restart NetworkManager[/blue]")
-                    console.print(f"[blue]4. Check if interface supports monitor mode: iw {iface} info[/blue]")
-                    console.print(f"[blue]5. Try a different interface if available[/blue]")
+                    # Method 3: Try iwconfig
+                    console.print(f"[blue]Method 3: Trying iwconfig...[/blue]")
+                    iwconfig_result = subprocess.run(["iwconfig", iface, "mode", "monitor"], 
+                                                   capture_output=True, text=True, timeout=10)
                     
-                    return None
+                    if iwconfig_result.returncode == 0:
+                        console.print(f"[green]✓ iwconfig succeeded[/green]")
+                        return iface
+                    else:
+                        console.print(f"[yellow]iwconfig failed, trying ifconfig down/up...[/yellow]")
+                        console.print(f"[blue]iwconfig error: {iwconfig_result.stderr}[/blue]")
+                        
+                        # Method 4: Try ifconfig down/up + iw
+                        console.print(f"[blue]Method 4: Trying ifconfig down/up + iw...[/blue]")
+                        subprocess.run(["ifconfig", iface, "down"], capture_output=True, timeout=5)
+                        time.sleep(1)
+                        iw_final = subprocess.run(["iw", iface, "set", "type", "monitor"], 
+                                                capture_output=True, text=True, timeout=10)
+                        subprocess.run(["ifconfig", iface, "up"], capture_output=True, timeout=5)
+                        
+                        if iw_final.returncode == 0:
+                            console.print(f"[green]✓ ifconfig down/up + iw succeeded[/green]")
+                            return iface
+                        else:
+                            console.print(f"[red]All methods failed[/red]")
+                            console.print(f"[blue]airmon-ng error: {result.stderr}[/blue]")
+                            console.print(f"[blue]iw error: {iw_result.stderr}[/blue]")
+                            console.print(f"[blue]iwconfig error: {iwconfig_result.stderr}[/blue]")
+                            console.print(f"[blue]ifconfig+iw error: {iw_final.stderr}[/blue]")
+                            
+                            # Show troubleshooting tips
+                            console.print(f"\n[yellow]🔧 Troubleshooting Tips:[/yellow]")
+                            console.print(f"[blue]1. Make sure you're running as root: sudo python3 NetHawk.py[/blue]")
+                            console.print(f"[blue]2. Check if interface is already in use: iwconfig[/blue]")
+                            console.print(f"[blue]3. Try restarting NetworkManager: sudo systemctl restart NetworkManager[/blue]")
+                            console.print(f"[blue]4. Check if interface supports monitor mode: iw {iface} info[/blue]")
+                            console.print(f"[blue]5. Try a different interface if available[/blue]")
+                            console.print(f"[blue]6. Check if your WiFi adapter supports monitor mode[/blue]")
+                            
+                            return None
                 
         except Exception as e:
             console.print(f"[red]Error setting monitor mode: {e}[/red]")
@@ -384,45 +412,32 @@ class NetHawk:
         )
         iface = interfaces[int(iface_choice)-1]
         
-        # Check monitor mode support (but be flexible)
-        if not self._check_monitor_mode_support(iface):
-            console.print(f"[yellow]Warning: {iface} may not support monitor mode.[/yellow]")
-            console.print(f"[blue]But let's try anyway - airmon-ng will handle it![/blue]")
-            
-            # Run diagnostics
-            self._diagnose_monitor_mode(iface)
-            
-            if not Confirm.ask("Continue anyway? (airmon-ng will try to enable monitor mode)"):
-                return
-        
-        # Set monitor mode with progress
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            TimeElapsedColumn(),
-            console=console
-        ) as progress:
-            task = progress.add_task("Setting up interface...", total=3)
-            
-            progress.update(task, description="Setting monitor mode...")
+        # Check if already in monitor mode
+        try:
+            result = subprocess.run(["iw", iface, "info"], capture_output=True, text=True, timeout=5)
+            if result.returncode == 0 and "monitor" in result.stdout.lower():
+                console.print(f"[green]✓ {iface} is already in monitor mode![/green]")
+                monitor_iface = iface
+            else:
+                console.print(f"[blue]Attempting to set monitor mode on {iface}...[/blue]")
+                console.print(f"[yellow]Note: We'll try multiple methods to enable monitor mode[/yellow]")
+                monitor_iface = self._set_monitor_mode(iface)
+                if not monitor_iface:
+                    return
+        except:
+            console.print(f"[blue]Attempting to set monitor mode on {iface}...[/blue]")
+            console.print(f"[yellow]Note: We'll try multiple methods to enable monitor mode[/yellow]")
             monitor_iface = self._set_monitor_mode(iface)
             if not monitor_iface:
                 return
-            progress.advance(task)
-            
-            progress.update(task, description="Configuring scan options...")
-            # AGGRESSIVE scan options
-            console.print("\n[bold]AGGRESSIVE Scan Options:[/bold]")
-            channels = Prompt.ask("Channels to scan (e.g., 1,6,11 or all)", default="all")
-            console.print(f"[yellow]Channels: {channels}[/yellow]")
-            console.print(f"[blue]Interface: {monitor_iface}[/blue]")
-            console.print(f"[green]Ready to scan! Press Enter to start...[/green]")
-            input()  # Wait for user to press Enter
-            progress.advance(task)
-            
-            progress.update(task, description="Preparing scan...")
-            progress.advance(task)
+        
+        # Configure scan options
+        console.print("\n[bold]AGGRESSIVE Scan Options:[/bold]")
+        channels = Prompt.ask("Channels to scan (e.g., 1,6,11 or all)", default="all")
+        console.print(f"[yellow]Channels: {channels}[/yellow]")
+        console.print(f"[blue]Interface: {monitor_iface}[/blue]")
+        console.print(f"[green]Ready to scan! Press Enter to start...[/green]")
+        input()  # Wait for user to press Enter
         
         # Start AGGRESSIVE passive scan
         console.print(f"[blue]Starting AGGRESSIVE scan on {monitor_iface}...[/blue]")
