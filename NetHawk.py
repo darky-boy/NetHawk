@@ -706,6 +706,7 @@ class NetHawk:
         console.print(f"[blue]Auto-detecting your current network...[/blue]")
         target = self._get_current_network()
         console.print(f"[blue]Debug: Detected target = '{target}'[/blue]")
+        console.print(f"[blue]Debug: Target type = {type(target)}[/blue]")
 
         # Validate detected target
         valid_network = None
@@ -730,6 +731,8 @@ class NetHawk:
         if not target:
             while True:
                 target = Prompt.ask("Enter target network (e.g., 192.168.1.0/24)")
+                console.print(f"[blue]Debug: User entered target = '{target}'[/blue]")
+                console.print(f"[blue]Debug: Target type = {type(target)}[/blue]")
                 
                 # Basic validation
                 if not target or target.strip() == '':
@@ -757,15 +760,20 @@ class NetHawk:
                     console.print(f"[blue]Please enter a valid network like 192.168.1.0/24[/blue]")
                     continue
         
+        # Store the network string in a safe variable to prevent corruption
+        network_string = str(target)
+        console.print(f"[blue]Debug: Network string stored as: '{network_string}'[/blue]")
+        
         # Create network object with final validation
         try:
-            network = ipaddress.IPv4Network(target, strict=False)
+            network = ipaddress.IPv4Network(network_string, strict=False)
         except Exception as e:
             console.print(f"[red]Invalid network format: {e}[/red]")
+            console.print(f"[red]Network string was: '{network_string}'[/red]")
             return
         
         try:
-            console.print(f"[blue]AGGRESSIVE scanning network: {network}[/blue]")
+            console.print(f"[blue]AGGRESSIVE scanning network: {network_string}[/blue]")
             
             # Get scan options
             console.print("\n[bold]AGGRESSIVE Scan Options:[/bold]")
@@ -798,35 +806,35 @@ class NetHawk:
                     console.print(f"[yellow]This may take 5-15 minutes depending on number of hosts[/yellow]")
                     self._aggressive_port_scan_with_progress(hosts, port_range, scan_type)
                 
-                # Display detailed results in terminal (no file saving)
-                console.print(f"\n[bold green]📊 ACTIVE SCAN RESULTS SUMMARY[/bold green]")
-                console.print(f"[blue]Network Scanned: {network}[/blue]")
-                console.print(f"[green]Total Hosts Found: {len(hosts)}[/green]")
-                console.print(f"[yellow]Scan Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/yellow]")
-                
-                # Show detailed host information
-                if hosts:
-                    console.print(f"\n[bold cyan]DETAILED HOST INFORMATION:[/bold cyan]")
-                    for i, host in enumerate(hosts, 1):
-                        console.print(f"\n[bold]Host {i}:[/bold]")
-                        console.print(f"  [green]IP Address:[/green] {host['ip']}")
-                        console.print(f"  [green]Status:[/green] {host['status']}")
-                        if host.get('mac') and host['mac'] != 'Unknown':
-                            console.print(f"  [green]MAC Address:[/green] {host['mac']}")
-                        if host.get('open_ports'):
-                            console.print(f"  [green]Open Ports:[/green] {len(host['open_ports'])} ports")
-                            for port in host['open_ports'][:5]:  # Show first 5 ports
-                                console.print(f"    - Port {port['port']}/{port['protocol']}: {port['service']}")
-                            if len(host['open_ports']) > 5:
-                                console.print(f"    - ... and {len(host['open_ports'])-5} more ports")
-                        else:
-                            console.print(f"  [yellow]No open ports found[/yellow]")
-                
-                console.print(f"\n[bold green]✅ Active scan completed successfully![/bold green]")
-                console.print(f"[blue]Results displayed above - no files saved[/blue]")
-            else:
-                console.print("[yellow]No active hosts found.[/yellow]")
-                console.print("[blue]Try scanning a different network or check your network connection[/blue]")
+            # Display detailed results in terminal (no file saving)
+            console.print(f"\n[bold green]📊 ACTIVE SCAN RESULTS SUMMARY[/bold green]")
+            console.print(f"[blue]Network Scanned: {network_string}[/blue]")
+            console.print(f"[green]Total Hosts Found: {len(hosts)}[/green]")
+            console.print(f"[yellow]Scan Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/yellow]")
+            
+            # Show detailed host information
+            if hosts:
+                console.print(f"\n[bold cyan]DETAILED HOST INFORMATION:[/bold cyan]")
+                for i, host in enumerate(hosts, 1):
+                    console.print(f"\n[bold]Host {i}:[/bold]")
+                    console.print(f"  [green]IP Address:[/green] {host['ip']}")
+                    console.print(f"  [green]Status:[/green] {host['status']}")
+                    if host.get('mac') and host['mac'] != 'Unknown':
+                        console.print(f"  [green]MAC Address:[/green] {host['mac']}")
+                    if host.get('open_ports'):
+                        console.print(f"  [green]Open Ports:[/green] {len(host['open_ports'])} ports")
+                        for port in host['open_ports'][:5]:  # Show first 5 ports
+                            console.print(f"    - Port {port['port']}/{port['protocol']}: {port['service']}")
+                        if len(host['open_ports']) > 5:
+                            console.print(f"    - ... and {len(host['open_ports'])-5} more ports")
+                    else:
+                        console.print(f"  [yellow]No open ports found[/yellow]")
+            
+            console.print(f"\n[bold green]✅ Active scan completed successfully![/bold green]")
+            console.print(f"[blue]Results displayed above - no files saved[/blue]")
+        else:
+            console.print("[yellow]No active hosts found.[/yellow]")
+            console.print("[blue]Try scanning a different network or check your network connection[/blue]")
                 
         except Exception as e:
             console.print(f"[red]Invalid network format: {e}[/red]")
