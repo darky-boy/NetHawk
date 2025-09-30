@@ -1797,13 +1797,13 @@ class NetHawk:
                 # Wait for airodump to initialize
                 console.print(f"[yellow]Initializing capture interface...[/yellow]")
                 time.sleep(3)
-            
-            # Enhanced deauth attack with client targeting
-            deauth_process = None
-            if use_deauth:
-                console.print(f"\n[bold red]🚀 LAUNCHING DEAUTH ATTACK[/bold red]")
                 
-                if target_client:
+                # Enhanced deauth attack with client targeting
+                deauth_process = None
+                if use_deauth:
+                    console.print(f"\n[bold red]🚀 LAUNCHING DEAUTH ATTACK[/bold red]")
+                    
+                    if target_client:
                     console.print(f"[red]Targeting specific client: {target_client['mac']}[/red]")
                     console.print(f"[red]Sending {deauth_count} deauthentication packets to {target_client['mac']}...[/red]")
                     
@@ -1949,21 +1949,21 @@ class NetHawk:
                 console.print(f"[cyan]• Ensure clients are actively connected[/cyan]")
                 console.print(f"[cyan]• Check if target network has protection mechanisms[/cyan]")
             
-        except KeyboardInterrupt:
-            console.print("\n[yellow]❌ Capture stopped by user.[/yellow]")
-            console.print(f"[blue]Partial capture data may be available in session files.[/blue]")
-        except Exception as e:
-            console.print(f"[red]❌ Error during advanced capture: {e}[/red]")
-            console.print(f"[yellow]💡 Troubleshooting tips:[/yellow]")
-            console.print(f"[blue]• Ensure you have a compatible WiFi adapter[/blue]")
-            console.print(f"[blue]• Check that aircrack-ng is properly installed[/blue]")
-            console.print(f"[blue]• Verify the target network is within range[/blue]")
-            console.print(f"[blue]• Try running with sudo for better permissions[/blue]")
-        finally:
-            # Restore managed mode
-            console.print(f"\n[blue]Restoring network interface to managed mode...[/blue]")
-            self._restore_managed_mode(monitor_iface)
-            console.print(f"[green]✓ Network interface restored[/green]")
+            except KeyboardInterrupt:
+                console.print("\n[yellow]❌ Capture stopped by user.[/yellow]")
+                console.print(f"[blue]Partial capture data may be available in session files.[/blue]")
+            except Exception as e:
+                console.print(f"[red]❌ Error during advanced capture: {e}[/red]")
+                console.print(f"[yellow]💡 Troubleshooting tips:[/yellow]")
+                console.print(f"[blue]• Ensure you have a compatible WiFi adapter[/blue]")
+                console.print(f"[blue]• Check that aircrack-ng is properly installed[/blue]")
+                console.print(f"[blue]• Verify the target network is within range[/blue]")
+                console.print(f"[blue]• Try running with sudo for better permissions[/blue]")
+            finally:
+                # Restore managed mode
+                console.print(f"\n[blue]Restoring network interface to managed mode...[/blue]")
+                self._restore_managed_mode(monitor_iface)
+                console.print(f"[green]✓ Network interface restored[/green]")
     
     def _show_connected_clients(self, bssid, monitor_iface):
         """Show connected clients for the target network."""
@@ -2999,7 +2999,7 @@ class NetHawk:
             # DEBUG: Show what we found
             console.print(f"[dim]DEBUG: Found {len(open_ports)} open ports, OS: {os_info}, MAC: {mac}[/dim]")
             if open_ports:
-                console.print(f"[dim]DEBUG: Open ports: {[f\"{p['port']}/{p['protocol']}\" for p in open_ports[:5]]}[/dim]")
+                console.print(f"[dim]DEBUG: Open ports: {[f'{p[\"port\"]}/{p[\"protocol\"]}' for p in open_ports[:5]]}[/dim]")
 
             # Infer device kind from ports/services/os/vendor using hybrid methodology
             device_kind = self._infer_device_type(open_ports, services, os_info, mac_vendor, mac)
