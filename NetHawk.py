@@ -747,29 +747,24 @@ class NetHawk:
             network = ipaddress.IPv4Network(target, strict=False)
             console.print(f"[blue]AGGRESSIVE scanning network: {network}[/blue]")
             
-            # AGGRESSIVE scan options with progress
-            with Progress(
-                SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                BarColumn(),
-                TimeElapsedColumn(),
-                console=console
-            ) as progress:
-                task = progress.add_task("Configuring active scan...", total=2)
-                
-                progress.update(task, description="Setting scan parameters...")
-                console.print("\n[bold]AGGRESSIVE Scan Options:[/bold]")
-                port_range = Prompt.ask("Port range (e.g., 1-1000, top1000, all)", default="top1000")
-                scan_type = Prompt.ask("Scan type (fast/aggressive/comprehensive)", default="aggressive")
-                progress.advance(task)
-                
-                progress.update(task, description="Preparing network scan...")
-                progress.advance(task)
+            # Get scan options
+            console.print("\n[bold]AGGRESSIVE Scan Options:[/bold]")
+            port_range = Prompt.ask("Port range (e.g., 1-1000, top1000, all)", default="top1000")
+            scan_type = Prompt.ask("Scan type (fast/aggressive/comprehensive)", default="aggressive")
             
             # Perform AGGRESSIVE scan with real-time progress
             console.print(f"\n[bold blue]🔍 Starting AGGRESSIVE Network Discovery...[/bold blue]")
             console.print(f"[yellow]This may take 2-5 minutes depending on network size[/yellow]")
             console.print(f"[blue]Scanning {network} for active hosts...[/blue]")
+            console.print(f"[green]Using ping to discover active hosts...[/green]")
+            
+            # Test ping to gateway first
+            gateway = str(network.network_address + 1)  # Usually .1
+            console.print(f"[blue]Testing connectivity to gateway {gateway}...[/blue]")
+            if self._ping_host(gateway):
+                console.print(f"[green]✓ Gateway {gateway} is reachable[/green]")
+            else:
+                console.print(f"[yellow]⚠ Gateway {gateway} not reachable, but continuing scan...[/yellow]")
             
             hosts = self._aggressive_host_discovery_with_progress(network)
             
@@ -1052,7 +1047,7 @@ class NetHawk:
                                 console.print(f"[green]✓ Detected network: {network}[/green]")
                                 return network
             
-            # Fallback: try to get network from ifconfig
+            # Fallback: try to get network from ip addr
             result = subprocess.run(["ip", "addr", "show"], capture_output=True, text=True, timeout=5)
             if result.returncode == 0:
                 for line in result.stdout.split('\n'):
@@ -1676,6 +1671,16 @@ class NetHawk:
             console.print("\n[yellow]Operation cancelled by user.[/yellow]")
         except Exception as e:
             console.print(f"\n[red]Unexpected error: {e}[/red]")
+
+    def _ping_host(self, ip):
+        """Ping a host to check if it's alive."""
+        try:
+            result = subprocess.run(["ping", "-c", "1", "-W", "1", ip], 
+                                  capture_output=True, timeout=3)
+            return result.returncode == 0
+            
+        except Exception:
+            return False
 
     def _scan_host_ports(self, ip, port_range, scan_type):
         """Scan ports on a single host."""
