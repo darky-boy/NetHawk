@@ -1761,15 +1761,43 @@ class NetHawk:
             console.print(f"[yellow]⚠️  Vulnerability scan timed out[/yellow]")
         except Exception as e:
             console.print(f"[red]Error during vulnerability scan: {e}[/red]")
-        console.print(f"  [cyan]Channel:[/cyan] {channel}")
-        console.print(f"  [cyan]Interface:[/cyan] {iface}")
+    
+    def web_application_scanning(self):
+        """Web application vulnerability scanning."""
+        console.print("[bold red]Web Application Scanning[/bold red]")
+        console.print("=" * 50)
         
-        # Enhanced legal warning with more details
-        console.print(f"\n[bold red]⚠️  LEGAL WARNING & ETHICAL GUIDELINES[/bold red]")
-        console.print(f"[yellow]• Only test networks you OWN or have EXPLICIT PERMISSION to test[/yellow]")
-        console.print(f"[yellow]• Unauthorized access to networks is ILLEGAL in most jurisdictions[/yellow]")
-        console.print(f"[yellow]• This tool is for educational and authorized security testing only[/yellow]")
-        console.print(f"[yellow]• You are responsible for ensuring compliance with local laws[/yellow]")
+        # Check for web scanning tools
+        if not self.tools_available.get("nikto", False):
+            console.print("[red]nikto not found! Please install nikto.[/red]")
+            return
+        
+        # Get target URL
+        target_url = Prompt.ask("[bold]Enter target URL (e.g., http://192.168.1.1)[/bold]")
+        
+        if not target_url:
+            console.print("[red]No target URL specified![/red]")
+            return
+        
+        # Run nikto scan
+        console.print(f"[blue]Running nikto scan on {target_url}...[/blue]")
+        
+        try:
+            nikto_cmd = ["nikto", "-h", target_url, "-Format", "json"]
+            result = subprocess.run(nikto_cmd, capture_output=True, text=True, timeout=300)
+            
+            if result.returncode == 0:
+                console.print(f"[green]✓ Nikto scan completed[/green]")
+                console.print(f"[blue]Results:[/blue]")
+                console.print(result.stdout)
+            else:
+                console.print(f"[yellow]⚠️  Scan completed with warnings[/yellow]")
+                console.print(result.stderr)
+                
+        except subprocess.TimeoutExpired:
+            console.print(f"[yellow]⚠️  Nikto scan timed out[/yellow]")
+        except Exception as e:
+            console.print(f"[red]Error during nikto scan: {e}[/red]")
         
         if not Confirm.ask("\n[bold red]Do you have permission to test this network?[/bold red]"):
             console.print("[yellow]❌ Operation cancelled for legal compliance.[/yellow]")
