@@ -18,24 +18,34 @@ git clone https://github.com/darky-boy/NetHawk.git
 cd NetHawk
 ```
 
-### **Step 2: Run Setup Script (Recommended)**
+### **Step 2: Installation (Choose One Method)**
+
+**Method 1: Automated Setup (Recommended)**
 ```bash
 # Make setup script executable and run it
 chmod +x setup.sh
 ./setup.sh
 ```
 
-**OR Manual Installation:**
+**Method 2: Manual Installation (If setup.sh fails)**
 ```bash
-# Install Python dependencies
-pip3 install -r requirements.txt
-
-# Install system dependencies (Ubuntu/Debian)
+# Install system dependencies
 sudo apt update
 sudo apt install -y aircrack-ng nmap nikto enum4linux dnsutils
 
-# For Kali Linux (most tools pre-installed)
-sudo apt update
+# Install Python dependencies (try multiple methods)
+pip3 install -r requirements.txt
+# OR if that fails:
+pip3 install --user -r requirements.txt
+# OR if that fails:
+pip3 install --break-system-packages -r requirements.txt
+```
+
+**Method 3: Combined Approach (Best of Both)**
+```bash
+# Run setup script AND manual installation as backup
+chmod +x setup.sh
+./setup.sh ; pip3 install -r requirements.txt ; sudo apt update ; sudo apt install -y aircrack-ng nmap nikto enum4linux dnsutils
 ```
 
 ### **Step 3: Run NetHawk**
@@ -187,8 +197,30 @@ sudo airmon-ng start wlan0
 
 **4. Python Dependencies**
 ```bash
-# Install Python packages
+# Try multiple installation methods
 pip3 install -r requirements.txt
+# OR if that fails:
+pip3 install --user -r requirements.txt
+# OR if that fails:
+pip3 install --break-system-packages -r requirements.txt
+# OR create virtual environment:
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+**5. Environment Issues**
+```bash
+# If setup.sh fails, run manual commands
+sudo apt update
+sudo apt install -y aircrack-ng nmap nikto enum4linux dnsutils
+pip3 install --user rich psutil requests
+
+# Or use virtual environment
+python3 -m venv nethawk_env
+source nethawk_env/bin/activate
+pip install rich psutil requests
+sudo python3 NetHawk.py
 ```
 
 ## ⚖️ Legal and Ethical Use
@@ -275,9 +307,9 @@ When reporting issues, please include:
 git clone https://github.com/darky-boy/NetHawk.git
 cd NetHawk
 
-# 2. Run setup script (recommended)
+# 2. Install everything (automated + manual backup)
 chmod +x setup.sh
-./setup.sh
+./setup.sh ; pip3 install -r requirements.txt ; sudo apt update ; sudo apt install -y aircrack-ng nmap nikto enum4linux dnsutils
 
 # 3. Run NetHawk
 sudo python3 NetHawk.py
