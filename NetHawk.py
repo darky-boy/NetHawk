@@ -704,17 +704,17 @@ class NetHawk:
 
         # Auto-detect current network
         console.print(f"[blue]Auto-detecting your current network...[/blue]")
-        target = self._get_current_network()
-        console.print(f"[blue]Debug: Detected target = '{target}'[/blue]")
-        console.print(f"[blue]Debug: Target type = {type(target)}[/blue]")
+        detected_network = self._get_current_network()
+        console.print(f"[blue]Debug: Detected network = '{detected_network}'[/blue]")
+        console.print(f"[blue]Debug: Network type = {type(detected_network)}[/blue]")
 
-        # Validate detected target
+        # Validate detected network
         valid_network = None
-        if isinstance(target, str):
+        if isinstance(detected_network, str):
             try:
                 # try to parse; don't enforce strict host/network alignment
-                ipaddress.IPv4Network(target, strict=False)
-                valid_network = target
+                ipaddress.IPv4Network(detected_network, strict=False)
+                valid_network = detected_network
             except Exception:
                 valid_network = None
 
@@ -763,6 +763,12 @@ class NetHawk:
         # Store the network string in a safe variable to prevent corruption
         network_string = str(target)
         console.print(f"[blue]Debug: Network string stored as: '{network_string}'[/blue]")
+        
+        # Defensive check to prevent 'mac' corruption
+        if network_string.lower() in ['mac', 'none', 'null', 'undefined']:
+            console.print(f"[red]ERROR: Network string corrupted to '{network_string}'[/red]")
+            console.print(f"[red]This should not happen. Please restart the tool.[/red]")
+            return
         
         # Create network object with final validation
         try:
