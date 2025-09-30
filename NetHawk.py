@@ -717,8 +717,30 @@ class NetHawk:
         console.print("[bold red]AGGRESSIVE Active Network Scan[/bold red]")
         console.print("=" * 50)
         
-        # Get target network
-        target = Prompt.ask("Enter target network (e.g., 192.168.1.0/24)")
+        # Try to auto-detect network from passive scan results
+        auto_detected_network = self._detect_network_from_passive_results()
+        
+        if auto_detected_network:
+            console.print(f"[green]✓ Auto-detected network from passive scan: {auto_detected_network}[/green]")
+            if Confirm.ask(f"Use detected network {auto_detected_network}?"):
+                target = auto_detected_network
+            else:
+                target = Prompt.ask("Enter target network (e.g., 192.168.1.0/24)")
+        else:
+            # Show network detection options
+            console.print(f"[yellow]No passive scan results found. Network detection options:[/yellow]")
+            console.print(f"[blue]1. Enter network manually (e.g., 192.168.1.0/24)[/blue]")
+            console.print(f"[blue]2. Auto-detect your current network[/blue]")
+            console.print(f"[blue]3. Use common network ranges[/blue]")
+            
+            choice = Prompt.ask("Choose option (1/2/3)", default="2")
+            
+            if choice == "1":
+                target = Prompt.ask("Enter target network (e.g., 192.168.1.0/24)")
+            elif choice == "2":
+                target = self._auto_detect_current_network()
+            else:
+                target = self._suggest_common_networks()
         
         try:
             # Validate network
@@ -884,6 +906,101 @@ class NetHawk:
         
         console.print(table)
     
+    def _detect_network_from_passive_results(self):
+        """Try to detect network from passive scan results."""
+        try:
+            # Look for recent passive scan results
+            if not os.path.exists(self.logs_path):
+                return None
+            
+            # Find the most recent passive scan CSV file
+            csv_files = [f for f in os.listdir(self.logs_path) if f.startswith("aggressive_passive_") and f.endswith("-01.csv")]
+            if not csv_files:
+                return None
+            
+            # Get the most recent file
+            latest_file = max(csv_files, key=lambda x: os.path.getctime(os.path.join(self.logs_path, x)))
+            csv_path = os.path.join(self.logs_path, latest_file)
+            
+            # Try to extract network info from CSV
+            with open(csv_path, 'r') as f:
+                lines = f.readlines()
+            
+            # Look for network information in the CSV
+            for line in lines:
+                if line.strip() and not line.startswith('BSSID'):
+                    parts = line.split(',')
+                    if len(parts) > 1:
+                        # Try to extract IP range from ESSID or other fields
+                        # This is a simplified approach - in reality, you'd need more sophisticated parsing
+                        pass
+            
+            return None  # For now, return None to use other methods
+            
+        except Exception:
+            return None
+    
+    def _auto_detect_current_network(self):
+        """Auto-detect current network using system commands."""
+        try:
+            console.print(f"[blue]Auto-detecting your current network...[/blue]")
+            
+            # Get current IP and subnet
+            result = subprocess.run(["ip", "route", "get", "1.1.1.1"], capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                # Parse the route output to get interface and network
+                for line in result.stdout.split('\n'):
+                    if 'src' in line:
+                        parts = line.split()
+                        for i, part in enumerate(parts):
+                            if part == 'src' and i + 1 < len(parts):
+                                ip = parts[i + 1]
+                                # Convert IP to network (assuming /24)
+                                network = '.'.join(ip.split('.')[:-1]) + '.0/24'
+                                console.print(f"[green]✓ Detected network: {network}[/green]")
+                                return network
+            
+            # Fallback: try to get network from ifconfig
+            result = subprocess.run(["ip", "addr", "show"], capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                for line in result.stdout.split('\n'):
+                    if 'inet ' in line and '127.0.0.1' not in line:
+                        # Extract IP from line like "inet 192.168.1.100/24"
+                        parts = line.split()
+                        for part in parts:
+                            if '/' in part and '.' in part:
+                                ip = part.split('/')[0]
+                                network = '.'.join(ip.split('.')[:-1]) + '.0/24'
+                                console.print(f"[green]✓ Detected network: {network}[/green]")
+                                return network
+            
+            console.print(f"[yellow]Could not auto-detect network[/yellow]")
+            return None
+            
+        except Exception as e:
+            console.print(f"[yellow]Auto-detection failed: {e}[/yellow]")
+            return None
+    
+    def _suggest_common_networks(self):
+        """Suggest common network ranges."""
+        console.print(f"[blue]Common network ranges:[/blue]")
+        console.print(f"[yellow]1. 192.168.1.0/24 (Most common home network)[/yellow]")
+        console.print(f"[yellow]2. 192.168.0.0/24 (Alternative home network)[/yellow]")
+        console.print(f"[yellow]3. 10.0.0.0/24 (Corporate network)[/yellow]")
+        console.print(f"[yellow]4. 172.16.0.0/24 (Corporate network)[/yellow]")
+        
+        choice = Prompt.ask("Choose network (1/2/3/4)", default="1")
+        networks = {
+            "1": "192.168.1.0/24",
+            "2": "192.168.0.0/24", 
+            "3": "10.0.0.0/24",
+            "4": "172.16.0.0/24"
+        }
+        
+        selected = networks.get(choice, "192.168.1.0/24")
+        console.print(f"[green]Selected network: {selected}[/green]")
+        return selected
+
     def _save_aggressive_active_results(self, hosts, target):
         """Save aggressive active scan results to JSON."""
         results = {
