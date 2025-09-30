@@ -832,9 +832,9 @@ class NetHawk:
             
             console.print(f"\n[bold green]✅ Active scan completed successfully![/bold green]")
             console.print(f"[blue]Results displayed above - no files saved[/blue]")
-            else:
-                console.print("[yellow]No active hosts found.[/yellow]")
-                console.print("[blue]Try scanning a different network or check your network connection[/blue]")
+        else:
+            console.print("[yellow]No active hosts found.[/yellow]")
+            console.print("[blue]Try scanning a different network or check your network connection[/blue]")
                 
         except Exception as e:
             console.print(f"[red]Invalid network format: {e}[/red]")
