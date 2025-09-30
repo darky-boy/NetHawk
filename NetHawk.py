@@ -825,12 +825,10 @@ class NetHawk:
                     console.print(f"[yellow]This may take 5-15 minutes depending on number of hosts[/yellow]")
                     self._aggressive_port_scan_with_progress(hosts, port_range, scan_type)
                 
-                # Save results - validate target first
-                if target and target != 'mac' and target != 'None':
-                    self._save_aggressive_active_results(hosts, target)
-                else:
-                    # Use network string as fallback
-                    self._save_aggressive_active_results(hosts, str(network))
+                # Save results - use network object directly to avoid 'mac' issue
+                network_string = str(network)
+                console.print(f"[blue]Debug: About to save with network = '{network_string}'[/blue]")
+                self._save_aggressive_active_results(hosts, network_string)
                 
                 # Show where results are stored
                 console.print(f"\n[bold yellow]📂 Active Scan Results Location:[/bold yellow]")
@@ -1226,6 +1224,9 @@ class NetHawk:
 
     def _save_aggressive_active_results(self, hosts, target):
         """Save aggressive active scan results to JSON."""
+        # Debug: Show exactly what target we're getting
+        console.print(f"[blue]Debug: Save function received target = '{target}'[/blue]")
+        
         # Validate target to prevent 'mac' error
         if target == 'mac' or target is None or not target:
             target = "Unknown Network"
