@@ -2628,21 +2628,40 @@ class NetHawk:
             # ULTIMATE AGGRESSIVE SCAN - Brute force everything
             cmd = ["nmap"]
             
-            # AGGRESSIVE MODE: Bypass all protections
-            cmd.extend([
-                "-Pn",                    # Don't ping (scan even if host drops ICMP)
-                "-p-",                    # ALL 65,535 TCP ports (brute force)
-                "-sS",                    # SYN scan (requires root)
-                "-sU",                    # UDP scan (IoT/mobile devices)
-                "-sV",                    # Service version detection
-                "-O",                     # OS fingerprinting
-                "--version-intensity", "9",  # MAX effort for service detection
-                "--script", "default,vuln", # NSE scripts for extra info
-                "-T5",                    # VERY aggressive timing
-                "--max-retries", "5",     # Push through dropped packets
-                "--host-timeout", "300s", # Long timeout for stubborn devices
-                "--min-rate", "1000"      # Minimum packet rate
-            ])
+            # Check if we should use a more reasonable scan first
+            if scan_type == "aggressive" and port_range == "all":
+                console.print(f"[blue]Using ULTIMATE AGGRESSIVE SCAN (all 65,535 ports)[/blue]")
+                # AGGRESSIVE MODE: Bypass all protections
+                cmd.extend([
+                    "-Pn",                    # Don't ping (scan even if host drops ICMP)
+                    "-p-",                    # ALL 65,535 TCP ports (brute force)
+                    "-sS",                    # SYN scan (requires root)
+                    "-sU",                    # UDP scan (IoT/mobile devices)
+                    "-sV",                    # Service version detection
+                    "-O",                     # OS fingerprinting
+                    "--version-intensity", "9",  # MAX effort for service detection
+                    "--script", "default,vuln", # NSE scripts for extra info
+                    "-T5",                    # VERY aggressive timing
+                    "--max-retries", "5",     # Push through dropped packets
+                    "--host-timeout", "300s", # Long timeout for stubborn devices
+                    "--min-rate", "1000"      # Minimum packet rate
+                ])
+            else:
+                console.print(f"[blue]Using SMART AGGRESSIVE SCAN (top 1000 ports + common UDP)[/blue]")
+                # SMART AGGRESSIVE: More reasonable but still thorough
+                cmd.extend([
+                    "-Pn",                    # Don't ping
+                    "--top-ports", "1000",    # Top 1000 TCP ports
+                    "-sS",                    # SYN scan
+                    "-sU", "--top-ports", "100",  # Top 100 UDP ports
+                    "-sV",                    # Service version detection
+                    "-O",                     # OS fingerprinting
+                    "--version-intensity", "7",  # High effort for service detection
+                    "--script", "default",   # Basic NSE scripts
+                    "-T4",                    # Aggressive timing
+                    "--max-retries", "3",     # Reasonable retries
+                    "--host-timeout", "180s"  # Reasonable timeout
+                ])
 
             cmd.append(ip)
 
@@ -2652,6 +2671,14 @@ class NetHawk:
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=1200)  # 20 minutes timeout
 
             raw = result.stdout if result.returncode == 0 else result.stdout + "\n" + result.stderr
+            
+            # DEBUG: Show raw nmap output for troubleshooting
+            console.print(f"[dim]DEBUG: Nmap return code: {result.returncode}[/dim]")
+            if raw:
+                console.print(f"[dim]DEBUG: Raw nmap output (first 500 chars):[/dim]")
+                console.print(f"[dim]{raw[:500]}...[/dim]")
+            else:
+                console.print(f"[yellow]DEBUG: No nmap output received[/yellow]")
 
             # Parse open ports / services (TCP + UDP)
             open_ports = []
@@ -2669,8 +2696,8 @@ class NetHawk:
                     svc = m.group(4)
                     svc_banner = m.group(6) or ""
                     
-                    # Only include truly open ports
-                    if state == "open":
+                    # Include open and open|filtered ports (filtered might be firewalled but accessible)
+                    if state in ["open", "open|filtered"]:
                         open_ports.append({
                             "port": portnum, 
                             "protocol": proto, 
@@ -2701,6 +2728,11 @@ class NetHawk:
             mac = self._get_mac_address(ip) if hasattr(self, "_get_mac_address") else "Unknown"
             mac_vendor = self._get_mac_vendor(mac) if hasattr(self, "_get_mac_vendor") else None
 
+            # DEBUG: Show what we found
+            console.print(f"[dim]DEBUG: Found {len(open_ports)} open ports, OS: {os_info}, MAC: {mac}[/dim]")
+            if open_ports:
+                console.print(f"[dim]DEBUG: Open ports: {[f\"{p['port']}/{p['protocol']}\" for p in open_ports[:5]]}[/dim]")
+
             # Infer device kind from ports/services/os/vendor using hybrid methodology
             device_kind = self._infer_device_type(open_ports, services, os_info, mac_vendor, mac)
 
@@ -2716,7 +2748,43 @@ class NetHawk:
 
         except subprocess.TimeoutExpired:
             console.print(f"[yellow]Nmap timed out scanning {ip}[/yellow]")
-            return {"open_ports": [], "os": "Unknown", "services": [], "nmap_output": ""}
+            console.print(f"[blue]Trying fallback scan with common ports...[/blue]")
+            
+            # Fallback: Try common ports only
+            try:
+                fallback_cmd = ["nmap", "-Pn", "-sS", "-sV", "-O", "--top-ports", "1000", "-T4", ip]
+                fallback_result = subprocess.run(fallback_cmd, capture_output=True, text=True, timeout=300)
+                fallback_raw = fallback_result.stdout if fallback_result.returncode == 0 else fallback_result.stdout + "\n" + fallback_result.stderr
+                
+                # Parse fallback results
+                fallback_ports = []
+                fallback_services = []
+                for line in fallback_raw.splitlines():
+                    line = line.strip()
+                    m = re.match(r"^(\d+)\/(tcp|udp)\s+(open|open\|filtered)\s+([^\s]+)(\s+(.*))?$", line)
+                    if m and m.group(3) in ["open", "open|filtered"]:
+                        fallback_ports.append({
+                            "port": m.group(1), 
+                            "protocol": m.group(2), 
+                            "service": m.group(4), 
+                            "banner": m.group(6) or "",
+                            "state": m.group(3)
+                        })
+                        fallback_services.append(m.group(4))
+                
+                console.print(f"[green]Fallback scan found {len(fallback_ports)} ports[/green]")
+                return {
+                    "open_ports": fallback_ports,
+                    "os": "Unknown", 
+                    "services": fallback_services,
+                    "nmap_output": fallback_raw,
+                    "mac": "Unknown",
+                    "mac_vendor": None,
+                    "device": "Unknown"
+                }
+            except:
+                return {"open_ports": [], "os": "Unknown", "services": [], "nmap_output": ""}
+                
         except Exception as e:
             console.print(f"[red]Error scanning {ip}: {e}[/red]")
             return {"open_ports": [], "os": "Unknown", "services": [], "nmap_output": ""}
