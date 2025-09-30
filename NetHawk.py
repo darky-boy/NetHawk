@@ -2538,11 +2538,16 @@ class NetHawk:
         console.print(f"\n[yellow]Press Ctrl+C to stop[/yellow]")
     
     def _parse_dns_results(self, dns_results, domain):
-        """Parse DNS query results to extract useful information."""
-        dns_info = []
+        """Parse DNS query results to extract useful information with robust parsing."""
+        import re
+        import ipaddress
         
-        console.print(f"[cyan]DEBUG: Starting DNS parsing for domain: {domain}[/cyan]")
+        dns_info = []
+        console.print(f"[cyan]DEBUG: Starting robust DNS parsing for domain: {domain}[/cyan]")
         console.print(f"[cyan]DEBUG: Query types available: {list(dns_results.keys())}[/cyan]")
+        
+        # Known DNS record types
+        record_types = {"A", "AAAA", "MX", "NS", "TXT", "CNAME", "SOA", "PTR"}
         
         for query_type, result in dns_results.items():
             console.print(f"[cyan]DEBUG: Processing query type: {query_type}[/cyan]")
@@ -2552,7 +2557,7 @@ class NetHawk:
                 
             lines = result.split('\n')
             in_answer_section = False
-            answer_lines_found = 0
+            last_owner = None
             
             for line in lines:
                 line = line.strip()
@@ -2568,107 +2573,142 @@ class NetHawk:
                     continue
                 
                 # Only parse lines in the ANSWER SECTION
-                if not in_answer_section or line.startswith(';'):
+                if not in_answer_section or line.startswith(';') or not line:
                     continue
                 
-                answer_lines_found += 1
-                console.print(f"[cyan]DEBUG: Processing answer line {answer_lines_found} for {query_type}: {line}[/cyan]")
+                console.print(f"[cyan]DEBUG: Processing line: {line}[/cyan]")
                 
-                # Parse A records - look for lines like "google.com. 66 IN A 142.250.71.110"
-                if query_type == "A" and ("IN A" in line or " A " in line):
+                # Normalize whitespace - replace tabs, NBSPs, multiple spaces with single space
+                normalized_line = re.sub(r"\s+", " ", line.replace("\u00A0", " ")).strip()
+                console.print(f"[cyan]DEBUG: Normalized line: {normalized_line}[/cyan]")
+                
+                # Tokenize properly
+                parts = normalized_line.split(" ")
+                parts = [part for part in parts if part]  # Remove empty tokens
+                console.print(f"[cyan]DEBUG: Parts: {parts}[/cyan]")
+                
+                if len(parts) < 3:
+                    console.print(f"[cyan]DEBUG: Skipping line - too few parts: {len(parts)}[/cyan]")
+                    continue
+                
+                # Detect record type reliably
+                record_type = None
+                for rt in record_types:
+                    if rt in parts:
+                        record_type = rt
+                        break
+                
+                if not record_type:
+                    console.print(f"[cyan]DEBUG: No known record type found in parts[/cyan]")
+                    continue
+                
+                console.print(f"[cyan]DEBUG: Found record type: {record_type}[/cyan]")
+                
+                # Handle missing owner - if first token is not an owner (likely TTL or class)
+                owner = None
+                if parts[0].isdigit() or parts[0] in ["IN", "CH", "HS"]:
+                    # First token is TTL or class, use last_owner
+                    owner = last_owner or domain
+                else:
+                    # First token is owner
+                    owner = parts[0]
+                    last_owner = owner
+                
+                console.print(f"[cyan]DEBUG: Owner: {owner}[/cyan]")
+                
+                # Parse based on record type
+                if record_type == "A":
                     console.print(f"[yellow]DEBUG A: Found A record line: {line}[/yellow]")
-                    # Split by whitespace and filter out empty strings
-                    parts = [part for part in line.split() if part]
                     console.print(f"[yellow]DEBUG A: Parts: {parts}[/yellow]")
-                    if len(parts) >= 4 and parts[-2] == "A":
-                        ip = parts[-1]
+                    
+                    # Find A record in parts
+                    a_index = parts.index("A")
+                    if a_index + 1 < len(parts):
+                        ip = parts[a_index + 1]
                         console.print(f"[yellow]DEBUG A: IP: {ip}[/yellow]")
-                        if ip.replace('.', '').isdigit():
-                            console.print(f"[yellow]DEBUG A: Adding A record: {domain} -> {ip}[/yellow]")
+                        
+                        # Validate IP with ipaddress module
+                        try:
+                            ipaddress.ip_address(ip)
+                            console.print(f"[yellow]DEBUG A: Adding A record: {owner} -> {ip}[/yellow]")
                             dns_info.append({
                                 "type": "A Record",
-                                "value": f"{domain} -> {ip}",
+                                "value": f"{owner} -> {ip}",
                                 "description": "IPv4 address mapping for the domain"
                             })
-                        else:
+                        except ValueError:
                             console.print(f"[yellow]DEBUG A: IP validation failed for: {ip}[/yellow]")
                     else:
-                        console.print(f"[yellow]DEBUG A: Parts validation failed. Length: {len(parts)}, Last-2: {parts[-2] if len(parts) >= 2 else 'N/A'}[/yellow]")
-                elif query_type == "A":
-                    console.print(f"[yellow]DEBUG A: No A record found in line: {line}[/yellow]")
+                        console.print(f"[yellow]DEBUG A: No IP found after A record[/yellow]")
                 
-                # Parse MX records - look for lines like "google.com. 23 IN MX 10 smtp.google.com."
-                elif query_type == "MX" and "IN MX" in line:
-                    parts = line.split()
-                    if len(parts) >= 4 and parts[-2] == "MX":
-                        priority = parts[-3]
-                        mailserver = parts[-1].rstrip('.')
+                elif record_type == "MX":
+                    console.print(f"[yellow]DEBUG MX: Found MX record line: {line}[/yellow]")
+                    mx_index = parts.index("MX")
+                    if mx_index + 2 < len(parts):
+                        priority = parts[mx_index + 1]
+                        mailserver = parts[mx_index + 2].rstrip('.')
+                        console.print(f"[yellow]DEBUG MX: Adding MX record: {mailserver} (Priority: {priority})[/yellow]")
                         dns_info.append({
                             "type": "MX Record",
                             "value": f"{mailserver} (Priority: {priority})",
                             "description": "Mail exchange server for the domain"
                         })
                 
-                # Parse NS records - look for lines like "google.com. 1034 IN NS ns2.google.com."
-                elif query_type == "NS" and "IN NS" in line:
-                    parts = line.split()
-                    if len(parts) >= 3 and parts[-2] == "NS":
-                        nameserver = parts[-1].rstrip('.')
+                elif record_type == "NS":
+                    console.print(f"[yellow]DEBUG NS: Found NS record line: {line}[/yellow]")
+                    ns_index = parts.index("NS")
+                    if ns_index + 1 < len(parts):
+                        nameserver = parts[ns_index + 1].rstrip('.')
+                        console.print(f"[yellow]DEBUG NS: Adding NS record: {nameserver}[/yellow]")
                         dns_info.append({
                             "type": "NS Record",
                             "value": nameserver,
                             "description": "Name server responsible for the domain"
                         })
                 
-                # Parse TXT records - look for lines like "google.com. 3600 IN TXT "apple-domain-verification=..."""
-                elif query_type == "TXT" and "IN TXT" in line:
-                    # Extract TXT content - it might be quoted
-                    if '"' in line:
-                        start = line.find('"')
-                        end = line.rfind('"')
-                        if start != end:
-                            txt_content = line[start+1:end]
-                            if txt_content and len(txt_content) > 5:
-                                dns_info.append({
-                                    "type": "TXT Record",
-                                    "value": txt_content,
-                                    "description": "Text record (may contain SPF, DKIM, or other info)"
-                                })
-                    else:
-                        # Fallback for unquoted TXT records
-                        parts = line.split()
-                        if len(parts) >= 3 and parts[-2] == "TXT":
-                            txt_content = parts[-1]
-                            if txt_content and len(txt_content) > 5:
-                                dns_info.append({
-                                    "type": "TXT Record",
-                                    "value": txt_content,
-                                    "description": "Text record (may contain SPF, DKIM, or other info)"
-                                })
+                elif record_type == "TXT":
+                    console.print(f"[yellow]DEBUG TXT: Found TXT record line: {line}[/yellow]")
+                    txt_index = parts.index("TXT")
+                    if txt_index + 1 < len(parts):
+                        # Extract TXT content - handle quoted content
+                        txt_content = parts[txt_index + 1]
+                        if txt_content.startswith('"') and txt_content.endswith('"'):
+                            txt_content = txt_content[1:-1]  # Remove quotes
+                        
+                        if txt_content and len(txt_content) > 5:
+                            console.print(f"[yellow]DEBUG TXT: Adding TXT record: {txt_content}[/yellow]")
+                            dns_info.append({
+                                "type": "TXT Record",
+                                "value": txt_content,
+                                "description": "Text record (may contain SPF, DKIM, or other info)"
+                            })
                 
-                # Parse CNAME records - look for lines like "www.google.com. IN CNAME google.com."
-                elif query_type == "CNAME" and "IN CNAME" in line:
-                    parts = line.split()
-                    if len(parts) >= 3 and parts[-2] == "CNAME":
-                        cname_target = parts[-1].rstrip('.')
+                elif record_type == "CNAME":
+                    console.print(f"[yellow]DEBUG CNAME: Found CNAME record line: {line}[/yellow]")
+                    cname_index = parts.index("CNAME")
+                    if cname_index + 1 < len(parts):
+                        cname_target = parts[cname_index + 1].rstrip('.')
+                        console.print(f"[yellow]DEBUG CNAME: Adding CNAME record: {owner} -> {cname_target}[/yellow]")
                         dns_info.append({
                             "type": "CNAME Record",
-                            "value": f"www.{domain} -> {cname_target}",
+                            "value": f"{owner} -> {cname_target}",
                             "description": "Canonical name alias for the domain"
                         })
                 
-                # Parse SOA records - look for lines like "google.com. 60 IN SOA ns1.google.com. dns-admin.google.com. ..."
-                elif query_type == "SOA" and "IN SOA" in line:
-                    parts = line.split()
-                    if len(parts) >= 7 and parts[-6] == "SOA":
-                        primary_ns = parts[-5].rstrip('.')
-                        admin_email = parts[-4].rstrip('.')
+                elif record_type == "SOA":
+                    console.print(f"[yellow]DEBUG SOA: Found SOA record line: {line}[/yellow]")
+                    soa_index = parts.index("SOA")
+                    if soa_index + 6 < len(parts):
+                        primary_ns = parts[soa_index + 1].rstrip('.')
+                        admin_email = parts[soa_index + 2].rstrip('.')
+                        console.print(f"[yellow]DEBUG SOA: Adding SOA record: Primary NS: {primary_ns}, Admin: {admin_email}[/yellow]")
                         dns_info.append({
                             "type": "SOA Record",
                             "value": f"Primary NS: {primary_ns}, Admin: {admin_email}",
                             "description": "Start of Authority record for the domain"
                         })
         
+        console.print(f"[cyan]DEBUG: Total records parsed: {len(dns_info)}[/cyan]")
         return dns_info
     
     def _save_dns_results(self, dns_info, domain):
