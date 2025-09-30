@@ -819,23 +819,23 @@ class NetHawk:
             console.print(f"[green]Total Hosts Found: {len(hosts)}[/green]")
             console.print(f"[yellow]Scan Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/yellow]")
             
-                # Show detailed host information
-                if hosts:
-                    console.print(f"\n[bold cyan]DETAILED HOST INFORMATION:[/bold cyan]")
-                    for i, host in enumerate(hosts, 1):
-                        console.print(f"\n[bold]Host {i}:[/bold]")
-                        console.print(f"  [green]IP Address:[/green] {host.get('ip', 'Unknown')}")
-                        console.print(f"  [green]Status:[/green] {host.get('status', 'Unknown')}")
-                        if host.get('mac') and host.get('mac') != 'Unknown':
-                            console.print(f"  [green]MAC Address:[/green] {host.get('mac')}")
-                        if host.get('open_ports'):
-                            console.print(f"  [green]Open Ports:[/green] {len(host['open_ports'])} ports")
-                            for port in host['open_ports'][:5]:  # Show first 5 ports
-                                console.print(f"    - Port {port['port']}/{port['protocol']}: {port['service']}")
-                            if len(host['open_ports']) > 5:
-                                console.print(f"    - ... and {len(host['open_ports'])-5} more ports")
-                        else:
-                            console.print(f"  [yellow]No open ports found[/yellow]")
+            # Show detailed host information
+            if hosts:
+                console.print(f"\n[bold cyan]DETAILED HOST INFORMATION:[/bold cyan]")
+                for i, host in enumerate(hosts, 1):
+                    console.print(f"\n[bold]Host {i}:[/bold]")
+                    console.print(f"  [green]IP Address:[/green] {host.get('ip', 'Unknown')}")
+                    console.print(f"  [green]Status:[/green] {host.get('status', 'Unknown')}")
+                    if host.get('mac') and host.get('mac') != 'Unknown':
+                        console.print(f"  [green]MAC Address:[/green] {host.get('mac')}")
+                    if host.get('open_ports'):
+                        console.print(f"  [green]Open Ports:[/green] {len(host['open_ports'])} ports")
+                        for port in host['open_ports'][:5]:  # Show first 5 ports
+                            console.print(f"    - Port {port['port']}/{port['protocol']}: {port['service']}")
+                        if len(host['open_ports']) > 5:
+                            console.print(f"    - ... and {len(host['open_ports'])-5} more ports")
+                    else:
+                        console.print(f"  [yellow]No open ports found[/yellow]")
                 
                 console.print(f"\n[bold green]✅ Active scan completed successfully![/bold green]")
                 console.print(f"[blue]Results displayed above - no files saved[/blue]")
