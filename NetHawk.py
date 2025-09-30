@@ -209,45 +209,67 @@ class NetHawk:
         return interfaces
     
     def _check_monitor_mode_support(self, iface):
-        """Check if interface supports monitor mode."""
+        """Check if interface supports monitor mode with better detection."""
         try:
+            console.print(f"[blue]Checking monitor mode support for {iface}...[/blue]")
+            
             # First check if interface exists and is wireless
             result = subprocess.run(["iw", iface, "info"], capture_output=True, text=True, timeout=5)
             if result.returncode != 0:
-                return False
+                console.print(f"[yellow]Warning: Could not get info for {iface}[/yellow]")
+                console.print(f"[blue]Let's try anyway - airmon-ng will handle it[/blue]")
+                return True  # Let airmon-ng try
             
             # Check if it's a wireless interface
             if "type" not in result.stdout.lower():
-                return False
+                console.print(f"[yellow]Warning: {iface} might not be wireless[/yellow]")
+                console.print(f"[blue]Let's try anyway - airmon-ng will handle it[/blue]")
+                return True  # Let airmon-ng try
+            
+            # Check current mode
+            if "monitor" in result.stdout.lower():
+                console.print(f"[green]✓ {iface} is already in monitor mode[/green]")
+                return True
             
             # Try to set monitor mode to test if it's supported
+            console.print(f"[blue]Testing monitor mode capability...[/blue]")
             test_result = subprocess.run(["iw", iface, "set", "type", "monitor"], 
                                        capture_output=True, text=True, timeout=5)
             
             if test_result.returncode == 0:
+                console.print(f"[green]✓ {iface} supports monitor mode[/green]")
                 # Restore to managed mode
                 subprocess.run(["iw", iface, "set", "type", "managed"], 
                              capture_output=True, timeout=5)
                 return True
             else:
-                return False
+                console.print(f"[yellow]Warning: Direct monitor mode test failed[/yellow]")
+                console.print(f"[blue]But airmon-ng might still work - let's try![/blue]")
+                return True  # Let airmon-ng handle it
                 
-        except Exception:
-            # If we can't test, assume it might work and let airmon-ng handle it
-            return True
+        except Exception as e:
+            console.print(f"[yellow]Warning: Monitor mode check failed: {e}[/yellow]")
+            console.print(f"[blue]Let's try anyway - airmon-ng will handle it[/blue]")
+            return True  # Always let airmon-ng try
     
     def _set_monitor_mode(self, iface):
-        """Set interface to monitor mode."""
+        """Set interface to monitor mode with better error handling."""
         try:
             console.print(f"[blue]Setting {iface} to monitor mode...[/blue]")
             
             # Stop conflicting processes
+            console.print(f"[blue]Stopping conflicting processes...[/blue]")
             subprocess.run(["airmon-ng", "check", "kill"], capture_output=True, timeout=10)
+            time.sleep(2)  # Give processes time to stop
             
-            # Set monitor mode
+            # Try multiple methods to set monitor mode
+            console.print(f"[blue]Attempting to set monitor mode...[/blue]")
+            
+            # Method 1: Try airmon-ng
             result = subprocess.run(["airmon-ng", "start", iface], capture_output=True, text=True, timeout=15)
             
             if result.returncode == 0:
+                console.print(f"[green]✓ airmon-ng succeeded[/green]")
                 # Find the new monitor interface
                 monitor_iface = iface + "mon"
                 if os.path.exists(f'/sys/class/net/{monitor_iface}'):
@@ -257,16 +279,35 @@ class NetHawk:
                     console.print(f"[green]✓ Monitor mode enabled on {iface}[/green]")
                     return iface
             else:
-                console.print(f"[red]Failed to set monitor mode: {result.stderr}[/red]")
-                console.print(f"[yellow]Try these solutions:[/yellow]")
-                console.print(f"[blue]1. sudo airmon-ng check kill[/blue]")
-                console.print(f"[blue]2. sudo ifconfig {iface} down[/blue]")
-                console.print(f"[blue]3. sudo iwconfig {iface} mode monitor[/blue]")
-                console.print(f"[blue]4. Check if another process is using {iface}[/blue]")
-                return None
+                console.print(f"[yellow]airmon-ng failed, trying alternative method...[/yellow]")
+                console.print(f"[blue]Error: {result.stderr}[/blue]")
+                
+                # Method 2: Try direct iw command
+                console.print(f"[blue]Trying direct iw command...[/blue]")
+                iw_result = subprocess.run(["iw", iface, "set", "type", "monitor"], 
+                                         capture_output=True, text=True, timeout=10)
+                
+                if iw_result.returncode == 0:
+                    console.print(f"[green]✓ Direct iw command succeeded[/green]")
+                    return iface
+                else:
+                    console.print(f"[red]Both methods failed[/red]")
+                    console.print(f"[blue]airmon-ng error: {result.stderr}[/blue]")
+                    console.print(f"[blue]iw error: {iw_result.stderr}[/blue]")
+                    
+                    # Show troubleshooting tips
+                    console.print(f"\n[yellow]🔧 Troubleshooting Tips:[/yellow]")
+                    console.print(f"[blue]1. Make sure you're running as root: sudo python3 NetHawk.py[/blue]")
+                    console.print(f"[blue]2. Check if interface is already in use: iwconfig[/blue]")
+                    console.print(f"[blue]3. Try restarting NetworkManager: sudo systemctl restart NetworkManager[/blue]")
+                    console.print(f"[blue]4. Check if interface supports monitor mode: iw {iface} info[/blue]")
+                    console.print(f"[blue]5. Try a different interface if available[/blue]")
+                    
+                    return None
                 
         except Exception as e:
             console.print(f"[red]Error setting monitor mode: {e}[/red]")
+            console.print(f"[blue]Try running as root: sudo python3 NetHawk.py[/blue]")
             return None
     
     def _restore_managed_mode(self, iface):
@@ -277,6 +318,46 @@ class NetHawk:
             console.print(f"[green]✓ Interface restored to managed mode[/green]")
         except Exception as e:
             console.print(f"[yellow]Warning: Could not restore interface: {e}[/yellow]")
+    
+    def _diagnose_monitor_mode(self, iface):
+        """Diagnose monitor mode issues and provide solutions."""
+        console.print(f"\n[yellow]🔍 Diagnosing monitor mode issues for {iface}...[/yellow]")
+        
+        # Check if running as root
+        if os.geteuid() != 0:
+            console.print(f"[red]❌ Not running as root![/red]")
+            console.print(f"[blue]Solution: Run with sudo python3 NetHawk.py[/blue]")
+            return False
+        
+        # Check interface status
+        try:
+            result = subprocess.run(["iw", iface, "info"], capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                console.print(f"[green]✓ Interface {iface} is accessible[/green]")
+                if "monitor" in result.stdout.lower():
+                    console.print(f"[green]✓ Already in monitor mode[/green]")
+                    return True
+            else:
+                console.print(f"[red]❌ Interface {iface} not accessible[/red]")
+                console.print(f"[blue]Solution: Check if interface exists with: iwconfig[/blue]")
+                return False
+        except Exception as e:
+            console.print(f"[red]❌ Error checking interface: {e}[/red]")
+            return False
+        
+        # Check for conflicting processes
+        try:
+            result = subprocess.run(["airmon-ng", "check"], capture_output=True, text=True, timeout=5)
+            if result.returncode == 0 and result.stdout.strip():
+                console.print(f"[yellow]⚠️  Conflicting processes found:[/yellow]")
+                console.print(f"[blue]{result.stdout}[/blue]")
+                console.print(f"[blue]Solution: Run 'sudo airmon-ng check kill'[/blue]")
+            else:
+                console.print(f"[green]✓ No conflicting processes[/green]")
+        except Exception as e:
+            console.print(f"[yellow]Warning: Could not check for conflicts: {e}[/yellow]")
+        
+        return True
     
     def aggressive_passive_scan(self):
         """AGGRESSIVE passive WiFi scanning with extended duration and multiple channels."""
@@ -306,6 +387,11 @@ class NetHawk:
         # Check monitor mode support (but be flexible)
         if not self._check_monitor_mode_support(iface):
             console.print(f"[yellow]Warning: {iface} may not support monitor mode.[/yellow]")
+            console.print(f"[blue]But let's try anyway - airmon-ng will handle it![/blue]")
+            
+            # Run diagnostics
+            self._diagnose_monitor_mode(iface)
+            
             if not Confirm.ask("Continue anyway? (airmon-ng will try to enable monitor mode)"):
                 return
         
