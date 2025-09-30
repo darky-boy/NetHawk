@@ -45,15 +45,6 @@ class NetHawk:
         self.tools_available = {}
         self._check_tools()
     
-    def _load_config(self):
-        """Load configuration settings."""
-        return {
-            "default_scan_type": "aggressive",
-            "default_interface": "wlan0",
-            "scan_duration": 60,
-            "output_format": "txt"
-        }
-    
     def _get_next_session_number(self):
         """Get the next available session number."""
         sessions_dir = "sessions"
@@ -87,9 +78,9 @@ class NetHawk:
         for directory in directories:
             try:
                 os.makedirs(directory, exist_ok=True)
-                console.print(f"[green]SUCCESS[/green] Created directory: {directory}")
+                console.print(f"[green]✓[/green] Created directory: {directory}")
             except Exception as e:
-                console.print(f"[red]ERROR[/red] Failed to create directory {directory}: {e}")
+                console.print(f"[red]✗[/red] Failed to create directory {directory}: {e}")
                 raise
     
     def _check_tools(self):
@@ -173,7 +164,6 @@ class NetHawk:
 [bold]7.[/bold] DNS Reconnaissance
 [bold]8.[/bold] Comprehensive Reporting
 [bold]9.[/bold] Show Detection Methodology
-[bold]B.[/bold] Bypass Protections Guide
 [bold]0.[/bold] Exit
 
 [italic]Session: {session}[/italic]
@@ -193,7 +183,7 @@ class NetHawk:
             try:
                 choice = Prompt.ask(prompt)
                 if choice in choices:
-                    return choice
+                return choice
                 else:
                     console.print("[red]Please enter a valid option.[/red]")
             except KeyboardInterrupt:
@@ -245,7 +235,7 @@ class NetHawk:
             # Check current mode
             if "monitor" in result.stdout.lower():
                 console.print(f"[green]✓ {iface} is already in monitor mode[/green]")
-                return True
+            return True
     
             # Try to set monitor mode to test if it's supported
             console.print(f"[blue]Testing monitor mode capability...[/blue]")
@@ -424,62 +414,6 @@ class NetHawk:
         
         return True
     
-    def passive_wifi_scan(self):
-        """Basic passive WiFi scanning."""
-        console.print("[bold red]Passive WiFi Scan[/bold red]")
-        console.print("=" * 50)
-
-        # Check if airodump-ng is available
-        if not self.tools_available.get("airodump-ng", False):
-            console.print("[red]airodump-ng not found! Please install aircrack-ng.[/red]")
-            return
-
-        # Get wireless interface
-        interfaces = self._get_wireless_interfaces()
-        if not interfaces:
-            console.print("[red]No wireless interfaces found![/red]")
-            return
-
-        console.print("[bold]Available interfaces:[/bold]")
-        for i, iface in enumerate(interfaces):
-            console.print(f"{i+1}. {iface}")
-
-        iface_choice = self.validate_input(
-            "\nSelect interface to use: ", [str(i+1) for i in range(len(interfaces))]
-        )
-        iface = interfaces[int(iface_choice)-1]
-        
-        # Set monitor mode
-        monitor_iface = self._set_monitor_mode(iface)
-        if not monitor_iface:
-            return
-
-        # Start passive scan
-        console.print(f"[blue]Starting passive WiFi scan on {monitor_iface}...[/blue]")
-        console.print("[yellow]Press Ctrl+C to stop scan[/yellow]")
-        
-        try:
-            # Run airodump-ng for passive scanning
-            cmd = ["airodump-ng", "-w", f"{self.session_path}/passive_scan", monitor_iface]
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
-            
-            if result.returncode == 0:
-                console.print(f"[green]SUCCESS[/green] Passive scan completed")
-                console.print(f"[blue]Results saved to: {self.session_path}/passive_scan-01.csv[/blue]")
-            else:
-                console.print(f"[yellow]Scan completed with warnings[/yellow]")
-                console.print(result.stderr)
-                
-        except subprocess.TimeoutExpired:
-            console.print(f"[yellow]Scan timed out[/yellow]")
-        except KeyboardInterrupt:
-            console.print(f"\n[yellow]Scan stopped by user[/yellow]")
-        except Exception as e:
-            console.print(f"[red]Error during passive scan: {e}[/red]")
-        finally:
-            # Restore managed mode
-            self._restore_managed_mode(monitor_iface)
-    
     def aggressive_passive_scan(self):
         """AGGRESSIVE passive WiFi scanning with extended duration and multiple channels."""
         console.print("[bold red]AGGRESSIVE Passive WiFi Scan[/bold red]")
@@ -522,7 +456,7 @@ class NetHawk:
             console.print(f"[yellow]Note: We'll try multiple methods to enable monitor mode[/yellow]")
             monitor_iface = self._set_monitor_mode(iface)
             if not monitor_iface:
-                return
+            return
 
         # Configure scan options
         console.print("\n[bold]AGGRESSIVE Scan Options:[/bold]")
@@ -550,10 +484,10 @@ class NetHawk:
             # Start the scan process
             try:
                 process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, text=True)
-            except FileNotFoundError:
+        except FileNotFoundError:
                 console.print(f"[red]Error: 'airodump-ng' command not found![/red]")
                 console.print(f"[blue]Please install aircrack-ng package: sudo apt install aircrack-ng[/blue]")
-                return
+            return
 
             # Real-time network discovery
             console.print(f"[blue]🔍 Scanning for networks...[/blue]")
@@ -869,7 +803,7 @@ class NetHawk:
         console.print(f"[blue]Testing connectivity to gateway {gateway}...[/blue]")
         if self._ping_host(gateway):
             console.print(f"[green]✓ Gateway {gateway} is reachable[/green]")
-        else:
+            else:
             console.print(f"[yellow]⚠ Gateway {gateway} not reachable, but continuing scan...[/yellow]")
         
         hosts = self._aggressive_host_discovery_with_progress(network)
@@ -878,27 +812,11 @@ class NetHawk:
             console.print(f"\n[green]✓ Found {len(hosts)} active hosts![/green]")
             self._display_aggressive_hosts_table(hosts)
             
-            # Port scan discovered hosts with speed options
+            # Port scan discovered hosts
             if Confirm.ask("Perform AGGRESSIVE port scanning on discovered hosts?"):
-                console.print(f"\n[bold green]🚀 SCAN MODE SELECTION[/bold green]")
-                console.print(f"[cyan]1. TURBO SCAN (30 seconds per host) - Fastest[/cyan]")
-                console.print(f"[cyan]2. FAST AGGRESSIVE (2-3 minutes per host) - Balanced[/cyan]")
-                console.print(f"[cyan]3. ULTIMATE AGGRESSIVE (10-15 minutes per host) - Most thorough[/cyan]")
-                
-                scan_choice = self.validate_input(
-                    "[bold]Select scan mode (1-3):[/bold] ",
-                    ["1", "2", "3"]
-                )
-                
-                if scan_choice == "1":
-                    console.print(f"[green]✓ TURBO SCAN selected - Maximum speed![/green]")
-                    self._turbo_scan_all_hosts(hosts)
-                elif scan_choice == "2":
-                    console.print(f"[green]✓ FAST AGGRESSIVE SCAN selected - Balanced speed/thoroughness![/green]")
-                    self._fast_aggressive_scan_all_hosts(hosts)
-                else:
-                    console.print(f"[green]✓ ULTIMATE AGGRESSIVE SCAN selected - Maximum thoroughness![/green]")
-                    self._ultimate_aggressive_scan_all_hosts(hosts)
+                console.print(f"\n[bold blue]🔍 Starting AGGRESSIVE Port Scanning...[/bold blue]")
+                console.print(f"[yellow]This may take 5-15 minutes depending on number of hosts[/yellow]")
+                self._aggressive_port_scan_with_progress(hosts, port_range, scan_type)
             
             # Display detailed results in terminal (no file saving)
             console.print(f"\n[bold green]📊 ACTIVE SCAN RESULTS SUMMARY[/bold green]")
@@ -1176,7 +1094,7 @@ class NetHawk:
             detected_type = mac_device_type
             detection_methods.append("MAC OUI")
         
-        # METHOD 2: Port-Based Detection (High Confidence) - ENHANCED
+        # METHOD 2: Port-Based Detection (High Confidence)
         if 9100 in ports or 631 in ports or 515 in ports:
             confidence_score += 35
             detected_type = "Printer / MFP"
@@ -1185,7 +1103,7 @@ class NetHawk:
             confidence_score += 35
             detected_type = "Router / Gateway"
             detection_methods.append("Port Analysis")
-        elif 445 in ports or 3389 in ports or 135 in ports or 139 in ports:
+        elif 445 in ports or 3389 in ports or 135 in ports:
             confidence_score += 35
             detected_type = "Windows PC / Server"
             detection_methods.append("Port Analysis")
@@ -1193,20 +1111,10 @@ class NetHawk:
             if mac_vendor and ("raspberry" in (mac_vendor or "").lower()):
                 confidence_score += 35
                 detected_type = "Raspberry Pi / Embedded Linux"
-            else:
+        else:
                 confidence_score += 30
                 detected_type = "Linux machine / SSH host"
             detection_methods.append("Port + OS Analysis")
-        elif 80 in ports and 443 in ports and len(ports) < 10:
-            # Web server with few ports = likely IoT device
-            confidence_score += 30
-            detected_type = "IoT Device / Smart Home"
-            detection_methods.append("Port Analysis")
-        elif 53 in ports or 161 in ports or 162 in ports:
-            # DNS, SNMP ports = network device
-            confidence_score += 30
-            detected_type = "Network Device / Router"
-            detection_methods.append("Port Analysis")
         
         # METHOD 3: Service-Based Detection (Medium Confidence)
         if "ssh" in service_names and ("linux" in (os_info or "").lower() or "unix" in (os_info or "").lower()):
@@ -1322,96 +1230,6 @@ class NetHawk:
         
         console.print(f"[dim]Detection combines MAC OUI database (650+ prefixes) with port/service heuristics for maximum accuracy[/dim]")
     
-    def _force_scan_all_hosts(self, hosts, port_range="all", scan_type="aggressive"):
-        """FORCE scan every single host - no host left behind!"""
-        console.print(f"[red]🔥 FORCING AGGRESSIVE SCAN ON ALL {len(hosts)} HOSTS![/red]")
-        console.print(f"[yellow]⚠️ This will take a LONG time but will get MAXIMUM info![/yellow]")
-        
-        for i, host in enumerate(hosts, 1):
-            if host.get('status') == 'up':
-                console.print(f"\n[bold blue]🎯 SCANNING HOST {i}/{len(hosts)}: {host['ip']}[/bold blue]")
-                console.print(f"[cyan]MAC: {host.get('mac', 'Unknown')}[/cyan]")
-                
-                # FORCE scan this host
-                scan_result = self._scan_host_ports(host['ip'], port_range, scan_type)
-                
-                # Update host with ALL scan results
-                host['open_ports'] = scan_result.get('open_ports', [])
-                host['os'] = scan_result.get('os', 'Unknown')
-                host['device'] = scan_result.get('device', 'Unknown')
-                host['services'] = scan_result.get('services', [])
-                host['mac'] = scan_result.get('mac', host.get('mac', 'Unknown'))
-                host['mac_vendor'] = scan_result.get('mac_vendor', host.get('mac_vendor'))
-                host['nmap_output'] = scan_result.get('nmap_output', '')
-                
-                # Show immediate results
-                if host['open_ports']:
-                    console.print(f"[green]✓ FOUND {len(host['open_ports'])} OPEN PORTS![/green]")
-                    for port in host['open_ports'][:3]:  # Show first 3 ports
-                        console.print(f"  [blue]Port {port['port']}/{port['protocol']}: {port['service']}[/blue]")
-                    if len(host['open_ports']) > 3:
-                        console.print(f"  [blue]... and {len(host['open_ports'])-3} more ports[/blue]")
-                else:
-                    console.print(f"[yellow]⚠ No open ports found (device may be firewalled)[/yellow]")
-                
-                if host['os'] != 'Unknown':
-                    console.print(f"[green]OS: {host['os']}[/green]")
-                
-                if host['device'] != 'Unknown':
-                    console.print(f"[green]Device: {host['device']}[/green]")
-                
-                console.print(f"[dim]Host {i} scan completed[/dim]")
-        
-        console.print(f"\n[bold green]🎉 ALL HOSTS SCANNED! Check results above.[/bold green]")
-    
-    def _bypass_protections_tips(self):
-        """Display tips to bypass common protections and get maximum results."""
-        console.print(f"\n[bold red]🔥 BYPASS PROTECTIONS - MAXIMUM RESULTS GUIDE:[/bold red]")
-        
-        console.print(f"\n[bold yellow]1. 🚀 Run as ROOT (sudo):[/bold yellow]")
-        console.print(f"   sudo python3 NetHawk.py")
-        console.print(f"   • Enables SYN scans (-sS)")
-        console.print(f"   • Enables OS fingerprinting (-O)")
-        console.print(f"   • Bypasses permission restrictions")
-        
-        console.print(f"\n[bold green]2. 🔧 Disable Wi-Fi Client Isolation:[/bold green]")
-        console.print(f"   • Login to your router admin panel")
-        console.print(f"   • Look for 'Client Isolation' or 'AP Isolation'")
-        console.print(f"   • DISABLE it to scan other devices")
-        console.print(f"   • Some routers call it 'Station Isolation'")
-        
-        console.print(f"\n[bold blue]3. 🎯 Router Settings to Check:[/bold blue]")
-        console.print(f"   • Disable 'Guest Network Isolation'")
-        console.print(f"   • Enable 'Device Discovery'")
-        console.print(f"   • Disable 'Network Segmentation'")
-        console.print(f"   • Check firewall rules for LAN traffic")
-        
-        console.print(f"\n[bold magenta]4. 🔍 Device-Specific Bypasses:[/bold magenta]")
-        console.print(f"   • Android: Enable 'Developer Options' → 'USB Debugging'")
-        console.print(f"   • iOS: May need jailbreak for full access")
-        console.print(f"   • Windows: Disable Windows Firewall temporarily")
-        console.print(f"   • Linux: Check iptables rules")
-        
-        console.print(f"\n[bold cyan]5. 🌐 Network Configuration:[/bold cyan]")
-        console.print(f"   • Use wired connection to router")
-        console.print(f"   • Disable VPN/proxy during scan")
-        console.print(f"   • Check if devices are on same subnet")
-        console.print(f"   • Some devices only respond to specific protocols")
-        
-        console.print(f"\n[bold red]6. ⚡ ULTIMATE AGGRESSIVE SCAN FEATURES:[/bold red]")
-        console.print(f"   • Scans ALL 65,535 TCP ports")
-        console.print(f"   • Scans common UDP ports")
-        console.print(f"   • Uses NSE scripts for extra info")
-        console.print(f"   • Maximum retry attempts (5x)")
-        console.print(f"   • Very aggressive timing (-T5)")
-        console.print(f"   • Long timeouts for stubborn devices")
-        
-        console.print(f"\n[bold green]💡 PRO TIP: If still no results, the device may be:[/bold green]")
-        console.print(f"   • Completely firewalled (corporate security)")
-        console.print(f"   • Using non-standard ports")
-        console.print(f"   • Behind NAT/firewall")
-        console.print(f"   • Powered off or disconnected")
-    
     def _display_hybrid_detection_explanation(self):
         """Display comprehensive explanation of the hybrid detection methodology."""
         console.print(f"\n[bold cyan]🧠 HYBRID DETECTION METHODOLOGY EXPLAINED:[/bold cyan]")
@@ -1465,14 +1283,14 @@ class NetHawk:
         """AGGRESSIVE port scanning with real-time progress and results."""
         total_hosts = len(hosts)
         console.print(f"[blue]Port scanning {total_hosts} hosts...[/blue]")
-        
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            TimeElapsedColumn(),
-            console=console
-        ) as progress:
+                    
+                    with Progress(
+                        SpinnerColumn(),
+                        TextColumn("[progress.description]{task.description}"),
+                        BarColumn(),
+                        TimeElapsedColumn(),
+                        console=console
+                    ) as progress:
             task = progress.add_task("Port scanning hosts...", total=total_hosts)
             
             for i, host in enumerate(hosts):
@@ -1531,12 +1349,12 @@ class NetHawk:
                     host["nmap_output"] = result.stdout
                     
                     console.print(f"[green]✓ Found {len(open_ports)} open ports on {host['ip']}[/green]")
-                else:
+                    else:
                     console.print(f"[red]Port scan failed for {host['ip']}[/red]")
                     
             except subprocess.TimeoutExpired:
                 console.print(f"[yellow]Port scan timed out for {host['ip']}[/yellow]")
-            except Exception as e:
+                except Exception as e:
                 console.print(f"[red]Error scanning {host['ip']}: {e}[/red]")
     
     def _parse_nmap_output(self, nmap_output):
@@ -1651,8 +1469,8 @@ class NetHawk:
                         network = '.'.join(ip.split('.')[:-1]) + '.0/24'
                         return network
             
-            return None
-            
+        return None
+    
         except Exception as e:
             console.print(f"[yellow]Network detection failed: {e}[/yellow]")
             return None
@@ -1679,110 +1497,122 @@ class NetHawk:
 
     
     def advanced_handshake_capture(self):
-        """Simplified handshake capture function - syntax fixed version."""
-        console.print(f"\n[bold red]🔥 ADVANCED HANDSHAKE CAPTURE + DEAUTH[/bold red]")
-        console.print(f"[blue]Professional WiFi Security Testing Tool[/blue]")
-        console.print(f"=" * 60)
+        """Advanced handshake capture with deauth attacks."""
+        console.print("[bold red]Advanced Handshake Capture + Deauth[/bold red]")
+        console.print("=" * 50)
+
+        # Check if airodump-ng is available
+        if not self.tools_available.get("airodump-ng", False):
+            console.print("[red]airodump-ng not found! Please install aircrack-ng.[/red]")
+            return
+
+        # Get wireless interface
+        interfaces = self._get_wireless_interfaces()
+        if not interfaces:
+            console.print("[red]No wireless interfaces found![/red]")
+            return
+
+        console.print("[bold]Available interfaces:[/bold]")
+        for i, iface in enumerate(interfaces):
+            console.print(f"{i+1}. {iface}")
         
-        # Enhanced legal warning and ethical guidelines
-        console.print(f"\n[bold red]⚠️  LEGAL WARNING & ETHICAL GUIDELINES[/bold red]")
-        console.print(f"[yellow]• Only test networks you OWN or have EXPLICIT PERMISSION to test[/yellow]")
-        console.print(f"[yellow]• Unauthorized access to networks is ILLEGAL in most jurisdictions[/yellow]")
-        console.print(f"[yellow]• This tool is for educational and authorized security testing only[/yellow]")
-        console.print(f"[yellow]• Always follow responsible disclosure practices[/yellow]")
-        console.print(f"[yellow]• Respect privacy and data protection laws[/yellow]")
+        iface_choice = self.validate_input(
+            "\nSelect interface to use: ", [str(i+1) for i in range(len(interfaces))]
+        )
+        iface = interfaces[int(iface_choice)-1]
         
-        if not Confirm.ask("\n[bold]I understand and agree to use this tool responsibly[/bold]"):
-            console.print(f"[red]❌ Access denied. Please ensure you have proper authorization.[/red]")
+        # Get target information
+        bssid = Prompt.ask("Enter target BSSID (MAC address)")
+        essid = Prompt.ask("Enter target ESSID (network name)")
+        channel = Prompt.ask("Enter target channel", default="6")
+        
+        # Validate BSSID format
+        if not re.match(r'^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$', bssid):
+            console.print("[red]Invalid BSSID format! Use format: XX:XX:XX:XX:XX:XX[/red]")
+            return
+            
+        console.print(f"[blue]Target: {essid} ({bssid}) on channel {channel}[/blue]")
+        
+        # Legal warning
+        if not Confirm.ask("[bold red]WARNING: Only capture handshakes from networks you own or have permission to test! Continue?[/bold red]"):
+            console.print("[yellow]Operation cancelled.[/yellow]")
+            return
+                
+        # Set monitor mode
+        monitor_iface = self._set_monitor_mode(iface)
+        if not monitor_iface:
             return
         
-        console.print(f"[green]✓ Handshake capture functionality temporarily simplified for syntax fixes[/green]")
-        console.print(f"[blue]Full functionality will be restored in next update[/blue]")
-        return
-    
-    def _show_connected_clients(self, bssid, monitor_iface):
-        """Show connected clients for the target network."""
+        # Advanced capture options
+        console.print("\n[bold]Advanced Capture Options:[/bold]")
+        use_deauth = Confirm.ask("Use deauth attacks to force handshake?", default=True)
+        deauth_count = IntPrompt.ask("Number of deauth packets", default=10) if use_deauth else 0
+        
+        # Start advanced handshake capture
+        output_file = os.path.join(self.handshakes_path, f"{essid}_advanced_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+        
         try:
-            console.print(f"\n[bold blue]📱 SCANNING FOR CONNECTED CLIENTS[/bold blue]")
+            console.print(f"[blue]Starting advanced handshake capture...[/blue]")
+            console.print("[yellow]Press Ctrl+C to stop[/yellow]")
             
-            # Use airodump-ng to scan for clients
-            client_cmd = ["airodump-ng", "-c", "1", "--bssid", bssid, monitor_iface]
+            # Start airodump-ng
+            cmd = ["airodump-ng", "-c", channel, "-w", output_file, "--bssid", bssid, monitor_iface]
+            airodump_process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             
-            with Progress(
-                SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                console=console
-            ) as progress:
-                task = progress.add_task("Scanning for clients...", total=10)
+            # Wait a bit for airodump to start
+            time.sleep(5)
+            
+            # Start deauth attack if requested
+            deauth_process = None
+            if use_deauth:
+                console.print(f"[red]Starting deauth attack with {deauth_count} packets...[/red]")
+                deauth_cmd = ["aireplay-ng", "--deauth", str(deauth_count), "-a", bssid, monitor_iface]
+                deauth_process = subprocess.Popen(deauth_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            
+            # Show progress for handshake capture
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TimeElapsedColumn(),
+            console=console
+        ) as progress:
+                task = progress.add_task("Capturing handshake...", total=30)
                 
-                client_process = subprocess.Popen(
-                    client_cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True
-                )
-                
-                for i in range(10):
-                    progress.update(task, description=f"Scanning... {i+1}/10s")
+                for i in range(30):
+                    progress.update(task, description=f"Capturing... {i+1}/30s")
                     time.sleep(1)
                 
-                client_process.terminate()
-                client_process.wait()
-                
-                progress.update(task, description="Client scan complete!")
+                progress.update(task, description="Capture complete!")
             
-            console.print(f"[green]✓ Client scan completed[/green]")
+            # Stop processes
+            airodump_process.terminate()
+            airodump_process.wait()
             
+            if deauth_process:
+                deauth_process.terminate()
+                deauth_process.wait()
+            
+            console.print(f"[green]✓ Advanced handshake capture completed![/green]")
+            console.print(f"[blue]Handshake saved to: {output_file}*[/blue]")
+            console.print("[yellow]Note: Use external tools like aircrack-ng to crack the handshake[/yellow]")
+            
+            # Show session storage message
+            console.print(f"\n[bold green]📁 Scan Results Stored in Session Files:[/bold green]")
+            console.print(f"[blue]Session Path: {self.session_path}[/blue]")
+            console.print(f"[blue]Handshakes Directory: {self.handshakes_path}[/blue]")
+            console.print(f"[yellow]Files created:[/yellow]")
+            console.print(f"[blue]  - {os.path.basename(output_file)}.cap (Handshake file)[/blue]")
+            console.print(f"[blue]  - {os.path.basename(output_file)}.csv (Capture data)[/blue]")
+            console.print(f"[green]✓ All capture data is automatically saved to your session![/green]")
+            
+        except KeyboardInterrupt:
+            console.print("\n[yellow]Capture stopped by user.[/yellow]")
         except Exception as e:
-            console.print(f"[yellow]⚠️  Could not scan for clients: {e}[/yellow]")
-    
-    def _verify_handshake_capture(self, cap_file, bssid):
-        """Verify that a valid WPA/WPA2 handshake was captured."""
-        try:
-            console.print(f"[blue]Verifying handshake in {os.path.basename(cap_file)}...[/blue]")
-            
-            # Use aircrack-ng to verify handshake
-            verify_cmd = [
-                "aircrack-ng", 
-                "-w", "/dev/null",  # No wordlist needed for verification
-                "-b", bssid,
-                cap_file
-            ]
-            
-            result = subprocess.run(
-                verify_cmd, 
-                capture_output=True, 
-                text=True, 
-                timeout=30
-            )
-            
-            # Parse output for handshake confirmation
-            output = result.stdout + result.stderr
-            
-            # Look for handshake confirmation patterns
-            handshake_patterns = [
-                f"Handshake with {bssid}",
-                "1 handshake",
-                "WPA (1 handshake)",
-                "WPA2 (1 handshake)"
-            ]
-            
-            for pattern in handshake_patterns:
-                if pattern in output:
-                    console.print(f"[green]✓ Handshake verification successful![/green]")
-                    return True
-            
-            # If no handshake found, show what was captured
-            console.print(f"[yellow]⚠️  No valid handshake found in capture[/yellow]")
-            console.print(f"[blue]Capture may contain other traffic but no WPA handshake[/blue]")
-            return False
-            
-        except subprocess.TimeoutExpired:
-            console.print(f"[yellow]⚠️  Handshake verification timed out[/yellow]")
-            return False
-        except Exception as e:
-            console.print(f"[yellow]⚠️  Could not verify handshake: {e}[/yellow]")
-            return False
+            console.print(f"[red]Error during advanced capture: {e}[/red]")
+        finally:
+            # Restore managed mode
+            self._restore_managed_mode(monitor_iface)
     
     def vulnerability_assessment(self):
         """Perform vulnerability assessment on discovered hosts."""
@@ -1794,38 +1624,137 @@ class NetHawk:
             console.print("[red]nmap not found! Please install nmap.[/red]")
             return
         
-        # Get target IP or network
-        target = Prompt.ask("[bold]Enter target IP or network (e.g., 192.168.1.1 or 192.168.1.0/24)[/bold]")
+        # Get target
+        target = Prompt.ask("Enter target IP or network")
         
-        if not target:
-            console.print("[red]No target specified![/red]")
-            return
-        
-        # Run vulnerability scan
-        console.print(f"[blue]Running vulnerability assessment on {target}...[/blue]")
+        console.print(f"[blue]Starting vulnerability assessment on {target}...[/blue]")
         
         try:
-            # Use nmap with vulnerability scripts
-            vuln_cmd = [
-                "nmap", "-sV", "--script", "vuln", 
-                "--script-args", "unsafe=1",
-                target
-            ]
+            # Run vulnerability scan with progress
+            cmd = ["nmap", "-T4", "--script", "vuln", "-sV", target]
             
-            result = subprocess.run(vuln_cmd, capture_output=True, text=True, timeout=300)
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TimeElapsedColumn(),
+                console=console
+            ) as progress:
+                task = progress.add_task("Running vulnerability scan...", total=100)
+                
+                # Start the scan in background
+                process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                
+                # Show progress with longer timeout for vulnerability scans
+                for i in range(600):  # 10 minutes max for vulnerability scans
+                    progress.update(task, description=f"Scanning {target}... {i+1}/600s")
+                    time.sleep(1)
+                    
+                    # Check if process finished
+                    if process.poll() is not None:
+                        progress.update(task, description="Scan completed!")
+                        break
+                
+                # Get results
+                stdout, stderr = process.communicate()
+                result = type('obj', (object,), {'returncode': process.returncode, 'stdout': stdout, 'stderr': stderr})()
             
             if result.returncode == 0:
-                console.print(f"[green]✓ Vulnerability scan completed[/green]")
-                console.print(f"[blue]Results:[/blue]")
-                console.print(result.stdout)
+                # Parse vulnerabilities
+                vulnerabilities = self._parse_vulnerabilities(result.stdout)
+                
+                if vulnerabilities:
+                    console.print(f"\n[bold green]📊 VULNERABILITY ASSESSMENT RESULTS[/bold green]")
+                    console.print(f"[blue]Target: {target}[/blue]")
+                    console.print(f"[green]Vulnerabilities Found: {len(vulnerabilities)}[/green]")
+                    console.print(f"[yellow]Scan Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/yellow]")
+                    
+                    console.print(f"\n[bold cyan]DETAILED VULNERABILITIES:[/bold cyan]")
+                    for i, vuln in enumerate(vulnerabilities, 1):
+                        console.print(f"\n[bold]Vulnerability {i}:[/bold]")
+                        console.print(f"  [red]Title:[/red] {vuln['title']}")
+                        console.print(f"  [yellow]Severity:[/yellow] {vuln['severity']}")
+                        console.print(f"  [blue]Description:[/blue] {vuln['description'][:200]}...")
+                    
+                    console.print(f"\n[bold green]✅ Vulnerability assessment completed![/bold green]")
+                    console.print(f"[blue]Results displayed above - no files saved[/blue]")
+                else:
+                    console.print("[yellow]No vulnerabilities found.[/yellow]")
+                    console.print("[blue]Target appears to be secure or scan was inconclusive[/blue]")
             else:
-                console.print(f"[yellow]⚠️  Scan completed with warnings[/yellow]")
-                console.print(result.stderr)
+                console.print(f"[red]Vulnerability scan failed: {result.stderr}[/red]")
+                console.print(f"[blue]Partial output: {result.stdout[:500]}...[/blue]")
                 
         except subprocess.TimeoutExpired:
-            console.print(f"[yellow]⚠️  Vulnerability scan timed out[/yellow]")
+            console.print("[yellow]Vulnerability scan timed out[/yellow]")
         except Exception as e:
-            console.print(f"[red]Error during vulnerability scan: {e}[/red]")
+            console.print(f"[red]Error during vulnerability assessment: {e}[/red]")
+    
+    def _parse_vulnerabilities(self, nmap_output):
+        """Parse nmap output to extract vulnerabilities."""
+        vulnerabilities = []
+        lines = nmap_output.split('\n')
+        
+        current_vuln = None
+        for line in lines:
+            if 'VULNERABLE:' in line:
+                if current_vuln:
+                    vulnerabilities.append(current_vuln)
+                current_vuln = {
+                    "title": line.split('VULNERABLE:')[1].strip(),
+                    "description": "",
+                    "severity": "Unknown"
+                }
+            elif current_vuln and line.strip():
+                current_vuln["description"] += line.strip() + " "
+        
+        if current_vuln:
+            vulnerabilities.append(current_vuln)
+        
+        return vulnerabilities
+    
+    def _display_vulnerabilities_table(self, vulnerabilities):
+        """Display vulnerabilities in a table."""
+        table = Table(title="Discovered Vulnerabilities")
+        table.add_column("Title", style="red")
+        table.add_column("Severity", style="yellow")
+        table.add_column("Description", style="white")
+        
+        for vuln in vulnerabilities:
+                table.add_row(
+                vuln["title"],
+                vuln["severity"],
+                vuln["description"][:100] + "..." if len(vuln["description"]) > 100 else vuln["description"]
+                )
+            
+            console.print(table)
+    
+    def _save_vulnerabilities(self, vulnerabilities, target):
+        """Save vulnerabilities to JSON."""
+        results = {
+            "timestamp": datetime.now().isoformat(),
+            "target": target,
+            "vulnerabilities": vulnerabilities,
+            "summary": {
+                "total_vulnerabilities": len(vulnerabilities)
+            }
+        }
+        
+        output_file = os.path.join(self.vulns_path, f"vulnerabilities_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
+        try:
+            with open(output_file, 'w') as f:
+                json.dump(results, f, indent=2)
+            console.print(f"[green]✓ Vulnerabilities saved to: {output_file}[/green]")
+            
+            # Show session storage message
+            console.print(f"\n[bold green]📁 Scan Results Stored in Session Files:[/bold green]")
+            console.print(f"[blue]Session Path: {self.session_path}[/blue]")
+            console.print(f"[blue]Vulnerabilities Directory: {self.vulns_path}[/blue]")
+            console.print(f"[yellow]Files created:[/yellow]")
+            console.print(f"[blue]  - {os.path.basename(output_file)} (Vulnerability assessment)[/blue]")
+            console.print(f"[green]✓ All scan data is automatically saved to your session![/green]")
+            except Exception as e:
+            console.print(f"[red]Error saving vulnerabilities: {e}[/red]")
     
     def web_application_scanning(self):
         """Web application vulnerability scanning."""
@@ -1837,65 +1766,302 @@ class NetHawk:
             console.print("[red]nikto not found! Please install nikto.[/red]")
             return
         
-        # Get target URL
-        target_url = Prompt.ask("[bold]Enter target URL (e.g., http://192.168.1.1)[/bold]")
+        # Get target URL with validation
+        while True:
+            target_url = Prompt.ask("Enter target URL (e.g., http://192.168.1.1)")
+            if target_url.startswith(('http://', 'https://')):
+                break
+        else:
+                console.print("[red]Please enter a valid URL starting with http:// or https://[/red]")
         
-        if not target_url:
-            console.print("[red]No target URL specified![/red]")
-            return
-        
-        # Run nikto scan
-        console.print(f"[blue]Running nikto scan on {target_url}...[/blue]")
+        console.print(f"[blue]Starting web application scan on {target_url}...[/blue]")
         
         try:
-            nikto_cmd = ["nikto", "-h", target_url, "-Format", "json"]
-            result = subprocess.run(nikto_cmd, capture_output=True, text=True, timeout=300)
+            # Run nikto scan with progress
+            output_file = os.path.join(self.vulns_path, f"nikto_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
+            cmd = ["nikto", "-h", target_url, "-Format", "json", "-output", output_file]
+        
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TimeElapsedColumn(),
+                console=console
+            ) as progress:
+                task = progress.add_task("Scanning web application...", total=100)
+                
+                # Start nikto in background
+                process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                
+                # Show progress with longer timeout for web scans
+                for i in range(600):  # 10 minutes max for web scans
+                    progress.update(task, description=f"Scanning {target_url}... {i+1}/600s")
+                    time.sleep(1)
+                    
+                    # Check if process finished
+                    if process.poll() is not None:
+                        progress.update(task, description="Web scan completed!")
+                        break
+                
+                # Get results
+                stdout, stderr = process.communicate()
+                result = type('obj', (object,), {'returncode': process.returncode, 'stdout': stdout, 'stderr': stderr})()
             
             if result.returncode == 0:
-                console.print(f"[green]✓ Nikto scan completed[/green]")
-                console.print(f"[blue]Results:[/blue]")
-                console.print(result.stdout)
+                console.print(f"\n[bold green]📊 WEB APPLICATION SCAN RESULTS[/bold green]")
+                console.print(f"[blue]Target: {target_url}[/blue]")
+                console.print(f"[yellow]Scan Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/yellow]")
+                
+                # Show detailed results in terminal
+                if result.stdout:
+                    console.print(f"\n[bold cyan]SCAN RESULTS:[/bold cyan]")
+                    lines = result.stdout.split('\n')
+                    for line in lines:
+                        if line.strip():
+                            console.print(f"[blue]{line}[/blue]")
+                
+                console.print(f"\n[bold green]✅ Web application scan completed![/bold green]")
+                console.print(f"[blue]Results displayed above - no files saved[/blue]")
             else:
-                console.print(f"[yellow]⚠️  Scan completed with warnings[/yellow]")
-                console.print(result.stderr)
+                console.print(f"[red]Web application scan failed: {result.stderr}[/red]")
+                console.print(f"[blue]Partial output: {result.stdout[:500]}...[/blue]")
+                
+                # Show some results if available
+                if result.stdout:
+                    console.print(f"[yellow]Scan output:[/yellow]")
+                    console.print(result.stdout[:500] + "..." if len(result.stdout) > 500 else result.stdout)
                 
         except subprocess.TimeoutExpired:
-            console.print(f"[yellow]⚠️  Nikto scan timed out[/yellow]")
+            console.print("[yellow]Web application scan timed out[/yellow]")
+            except Exception as e:
+            console.print(f"[red]Error during web application scanning: {e}[/red]")
+    
+    def smb_enumeration(self):
+        """SMB/Windows enumeration."""
+        console.print("[bold red]SMB/Windows Enumeration[/bold red]")
+        console.print("=" * 50)
+        
+        # Check for SMB tools
+        if not self.tools_available.get("enum4linux", False):
+            console.print("[red]enum4linux not found! Please install enum4linux.[/red]")
+            return
+        
+        # Get target with IP validation
+        while True:
+            target = Prompt.ask("Enter target IP")
+            try:
+                ipaddress.IPv4Address(target)
+                break
+            except ValueError:
+                console.print("[red]Please enter a valid IP address[/red]")
+        
+        console.print(f"[blue]Starting SMB enumeration on {target}...[/blue]")
+        
+        try:
+            # Run enum4linux with progress
+            cmd = ["enum4linux", "-a", target]
+            
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TimeElapsedColumn(),
+                console=console
+            ) as progress:
+                task = progress.add_task("Enumerating SMB services...", total=100)
+                
+                # Start enum4linux in background
+                process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                
+                # Show progress with longer timeout for SMB scans
+                for i in range(600):  # 10 minutes max for SMB scans
+                    progress.update(task, description=f"Enumerating {target}... {i+1}/600s")
+                    time.sleep(1)
+                    
+                    # Check if process finished
+                    if process.poll() is not None:
+                        progress.update(task, description="SMB enumeration completed!")
+                        break
+                
+                # Get results
+                stdout, stderr = process.communicate()
+                result = type('obj', (object,), {'returncode': process.returncode, 'stdout': stdout, 'stderr': stderr})()
+            
+            if result.returncode == 0:
+                console.print(f"\n[bold green]📊 SMB ENUMERATION RESULTS[/bold green]")
+                console.print(f"[blue]Target: {target}[/blue]")
+                console.print(f"[yellow]Scan Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/yellow]")
+                
+                # Show detailed results in terminal
+                if result.stdout:
+                    console.print(f"\n[bold cyan]ENUMERATION RESULTS:[/bold cyan]")
+                    lines = result.stdout.split('\n')
+                    for line in lines:
+                        if line.strip():
+                            console.print(f"[blue]{line}[/blue]")
+                
+                console.print(f"\n[bold green]✅ SMB enumeration completed![/bold green]")
+                console.print(f"[blue]Results displayed above - no files saved[/blue]")
+            else:
+                console.print(f"[red]SMB enumeration failed: {result.stderr}[/red]")
+                console.print(f"[blue]Partial output: {result.stdout[:500]}...[/blue]")
+                
+        except subprocess.TimeoutExpired:
+            console.print("[yellow]SMB enumeration timed out[/yellow]")
         except Exception as e:
-            console.print(f"[red]Error during nikto scan: {e}[/red]")
+            console.print(f"[red]Error during SMB enumeration: {e}[/red]")
     
     def dns_reconnaissance(self):
         """DNS reconnaissance."""
         console.print("[bold red]DNS Reconnaissance[/bold red]")
         console.print("=" * 50)
         
-        # Get target domain or IP
-        target = Prompt.ask("[bold]Enter target domain or IP[/bold]")
-        
-        if not target:
-            console.print("[red]No target specified![/red]")
+        # Check for DNS tools
+        if not self.tools_available.get("dig", False):
+            console.print("[red]dig not found! Please install dnsutils.[/red]")
             return
         
-        # Run DNS enumeration
-        console.print(f"[blue]Running DNS reconnaissance on {target}...[/blue]")
+        # Get target domain with validation
+        while True:
+            domain = Prompt.ask("Enter target domain")
+            if domain and '.' in domain and not domain.startswith('.'):
+                break
+            console.print("[red]Please enter a valid domain (e.g., example.com)[/red]")
+        
+        console.print(f"[blue]Starting DNS reconnaissance on {domain}...[/blue]")
         
         try:
-            # Use dig for DNS queries
-            dig_cmd = ["dig", target, "ANY"]
-            result = subprocess.run(dig_cmd, capture_output=True, text=True, timeout=60)
+            # Run DNS queries with progress
+            dns_results = {}
             
-            if result.returncode == 0:
-                console.print(f"[green]✓ DNS reconnaissance completed[/green]")
-                console.print(f"[blue]Results:[/blue]")
-                console.print(result.stdout)
-            else:
-                console.print(f"[yellow]⚠️  DNS query completed with warnings[/yellow]")
-                console.print(result.stderr)
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TimeElapsedColumn(),
+                console=console
+            ) as progress:
+                task = progress.add_task("Performing DNS reconnaissance...", total=3)
                 
-        except subprocess.TimeoutExpired:
-            console.print(f"[yellow]⚠️  DNS reconnaissance timed out[/yellow]")
+                # A records
+                progress.update(task, description=f"Querying A records for {domain}...")
+                result = subprocess.run(["dig", domain, "A"], capture_output=True, text=True, timeout=30)
+                if result.returncode == 0:
+                    dns_results["A_records"] = result.stdout
+                progress.advance(task)
+                
+                # MX records
+                progress.update(task, description=f"Querying MX records for {domain}...")
+                result = subprocess.run(["dig", domain, "MX"], capture_output=True, text=True, timeout=30)
+                if result.returncode == 0:
+                    dns_results["MX_records"] = result.stdout
+                progress.advance(task)
+                
+                # NS records
+                progress.update(task, description=f"Querying NS records for {domain}...")
+                result = subprocess.run(["dig", domain, "NS"], capture_output=True, text=True, timeout=30)
+                if result.returncode == 0:
+                    dns_results["NS_records"] = result.stdout
+                progress.advance(task)
+            
+            console.print(f"\n[bold green]📊 DNS RECONNAISSANCE RESULTS[/bold green]")
+            console.print(f"[blue]Target: {domain}[/blue]")
+            console.print(f"[yellow]Scan Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/yellow]")
+            
+            # Show results in terminal
+            console.print(f"\n[bold cyan]DNS QUERY RESULTS:[/bold cyan]")
+            for query_type, result in dns_results.items():
+                if result:
+                    console.print(f"\n[bold]{query_type}:[/bold]")
+                    lines = result.split('\n')
+                    for line in lines:
+                        if line.strip():
+                            console.print(f"[blue]  {line}[/blue]")
+            
+            console.print(f"\n[bold green]✅ DNS reconnaissance completed![/bold green]")
+            console.print(f"[blue]Results displayed above - no files saved[/blue]")
+            
         except Exception as e:
             console.print(f"[red]Error during DNS reconnaissance: {e}[/red]")
+    
+    def comprehensive_reporting(self):
+        """Generate comprehensive security assessment report."""
+        console.print("[bold red]Comprehensive Security Assessment Report[/bold red]")
+        console.print("=" * 50)
+        
+        report_file = os.path.join(self.session_path, f"comprehensive_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
+        
+        try:
+            with open(report_file, 'w') as f:
+                f.write("=" * 80 + "\n")
+                f.write("NetHawk v3.0 - Comprehensive Security Assessment Report\n")
+                f.write("=" * 80 + "\n")
+                f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"Session: {self.session_path}\n\n")
+                
+                # Executive Summary
+                f.write("EXECUTIVE SUMMARY\n")
+                f.write("-" * 40 + "\n")
+                f.write("This report contains the results of comprehensive network security assessment\n")
+                f.write("performed using NetHawk v3.0 - AGGRESSIVE penetration testing tool.\n\n")
+                
+                # Session Summary
+                f.write("SESSION SUMMARY\n")
+                f.write("-" * 40 + "\n")
+                f.write(f"Session Number: {self.session_number}\n")
+                f.write(f"Session Path: {self.session_path}\n")
+                f.write(f"Report Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+                
+                # Captured Handshakes
+                f.write("CAPTURED HANDSHAKES\n")
+                f.write("-" * 40 + "\n")
+                cap_files = [f for f in os.listdir(self.handshakes_path) if f.endswith('.cap')]
+                if cap_files:
+                    for cap_file in cap_files:
+                        cap_path = os.path.join(self.handshakes_path, cap_file)
+                        file_size = os.path.getsize(cap_path)
+                        f.write(f"File: {cap_file} ({file_size} bytes)\n")
+                        f.write(f"  Status: Captured - ready for external cracking\n")
+                        f.write("\n")
+                else:
+                    f.write("No handshake files captured.\n")
+                f.write("\n")
+                
+                # Vulnerabilities
+                f.write("DISCOVERED VULNERABILITIES\n")
+                f.write("-" * 40 + "\n")
+                vuln_files = [f for f in os.listdir(self.vulns_path) if f.endswith('.json')]
+                if vuln_files:
+                    for vuln_file in vuln_files:
+                        f.write(f"Vulnerability Report: {vuln_file}\n")
+                        else:
+                    f.write("No vulnerability reports generated.\n")
+                f.write("\n")
+                
+                # System Information
+                f.write("SYSTEM INFORMATION\n")
+                f.write("-" * 40 + "\n")
+                f.write(f"Python Version: {sys.version}\n")
+                f.write(f"Platform: {sys.platform}\n")
+                f.write(f"Working Directory: {os.getcwd()}\n")
+                f.write(f"Available Tools: {', '.join([k for k, v in self.tools_available.items() if v])}\n")
+            
+            console.print(f"[green]✓ Comprehensive report generated: {report_file}[/green]")
+            
+        except Exception as e:
+            console.print(f"[red]Error generating comprehensive report: {e}[/red]")
+    
+    def _load_config(self):
+        """Load configuration (placeholder). Returns dict of defaults."""
+        # TODO: read a JSON/YAML config file if you need persistent settings
+        return {
+            "default_scan_timeout": 300,
+            "default_port_range": "top1000",
+            "default_scan_type": "aggressive",
+            "default_interface": "wlan0",
+            "scan_duration": 60,
+            "output_format": "txt"
+        }
     
     def run(self):
         """Main application loop."""
@@ -1905,13 +2071,14 @@ class NetHawk:
             
             while True:
                 self.display_main_menu()
+                
                 choice = self.validate_input(
-                    "\n[bold]Select an option:[/bold] ",
-                    ["1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "Q"]
+                    "\nSelect an option: ", 
+                    ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
                 )
                 
                 if choice == "1":
-                    self.passive_wifi_scan()
+                    self.aggressive_passive_scan()
                 elif choice == "2":
                     self.aggressive_active_scan()
                 elif choice == "3":
@@ -1921,32 +2088,161 @@ class NetHawk:
                 elif choice == "5":
                     self.web_application_scanning()
                 elif choice == "6":
-                    self.dns_reconnaissance()
+                    self.smb_enumeration()
                 elif choice == "7":
-                    self._display_hybrid_detection_explanation()
+                    self.dns_reconnaissance()
                 elif choice == "8":
-                    self._bypass_protections_tips()
+                    self.comprehensive_reporting()
                 elif choice == "9":
                     self._display_hybrid_detection_explanation()
-                elif choice == "A":
-                    self._bypass_protections_tips()
-                elif choice == "B":
-                    self._bypass_protections_tips()
-                elif choice == "Q":
-                    console.print("\n[bold green]Thank you for using NetHawk![/bold green]")
+                elif choice == "0":
+                    console.print("[bold green]Thank you for using NetHawk v3.0![/bold green]")
                     break
-                    
+                
+                input("\nPress Enter to continue...")
+        
         except KeyboardInterrupt:
-            console.print("\n[yellow]Goodbye![/yellow]")
+            console.print("\n[yellow]Operation cancelled by user.[/yellow]")
         except Exception as e:
-            console.print(f"[red]Unexpected error: {e}[/red]")
+            console.print(f"\n[red]Unexpected error: {e}[/red]")
 
+    def _ping_host(self, ip, count=1, timeout=1):
+        """Simple ping wrapper used as gateway reachability test."""
+        try:
+            # Use system ping (linux)
+            result = subprocess.run(["ping", "-c", str(count), "-W", str(timeout), ip],
+                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return result.returncode == 0
+        except FileNotFoundError:
+            console.print(f"[yellow]Warning: 'ping' command not found. Install iputils-ping package.[/yellow]")
+            # fallback to aggressive ping
+            return self._aggressive_ping_host(ip)
+        except subprocess.TimeoutExpired:
+            console.print(f"[yellow]Warning: Ping timed out for {ip}[/yellow]")
+            return False
+        except Exception:
+            # fallback to aggressive ping
+            return self._aggressive_ping_host(ip)
+
+    def _scan_host_ports(self, ip, port_range="top1000", scan_type="aggressive"):
+        """
+        Perform a per-host nmap scan that tries to discover open ports, service versions, and OS.
+        Returns a dict: {"open_ports": [...], "os": "string or Unknown", "services": [...], "nmap_output": "raw"}
+        """
+        try:
+            # Ensure nmap exists
+            if not shutil.which("nmap"):
+                console.print("[yellow]Warning: nmap not installed. Install nmap to get ports/OS detection.[/yellow]")
+                return {"open_ports": [], "os": "Unknown", "services": [], "nmap_output": ""}
+
+            # Build nmap command
+            cmd = ["nmap"]
+            # -Pn: skip host discovery (we already know host is up). This avoids false negatives.
+            # -sS: SYN scan (requires root) — faster and better for stealth.
+            # -sV: service/version detection
+            # -O: OS detection (requires root and packets to be allowed)
+            # --version-intensity 5: moderate version detection intensity
+            # -p: port range can be "1-65535" or "top1000"
+            cmd.extend(["-Pn", "-sS", "-sV", "-O", "--version-intensity", "5"])
+
+            # Port selection
+            if port_range == "all":
+                cmd.extend(["-p", "1-65535"])
+            elif port_range == "top1000":
+                cmd.extend(["--top-ports", "1000"])
+            else:
+                # If user passed e.g. "1-1000"
+                cmd.extend(["-p", str(port_range)])
+
+            # Add some timing option depending on scan_type
+            if scan_type == "fast":
+                cmd.extend(["-T4"])
+            elif scan_type == "aggressive":
+                cmd.extend(["-T4"])
+            else:  # comprehensive
+                cmd.extend(["-T3", "--max-retries", "2"])
+
+            cmd.append(ip)
+
+            # Run nmap (allow long timeout)
+            console.print(f"[blue]Running nmap on {ip} (this may take a few seconds)...[/blue]")
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+
+            raw = result.stdout if result.returncode == 0 else result.stdout + "\n" + result.stderr
+
+            # Parse open ports / services
+            open_ports = []
+            services = []
+
+            # lines like: "22/tcp   open  ssh     OpenSSH 7.9p1 Debian 10+deb10u2 (protocol 2.0)"
+            for line in raw.splitlines():
+                line = line.strip()
+                m = re.match(r"^(\d+)\/(tcp|udp)\s+open\s+([^\s]+)(\s+(.*))?$", line)
+                if m:
+                    portnum = m.group(1)
+                    proto = m.group(2)
+                    svc = m.group(3)
+                    svc_banner = m.group(5) or ""
+                    open_ports.append({"port": portnum, "protocol": proto, "service": svc, "banner": svc_banner})
+                    services.append(svc)
+
+            # Parse OS info: look for common markers
+            os_info = "Unknown"
+            # look for lines like "OS details: Linux 3.10 - 4.11"
+            m = re.search(r"OS details:\s*(.+)", raw)
+            if m:
+                os_info = m.group(1).strip()
+            else:
+                # nmap sometimes writes "OS guesses: Linux 3.2 - 4.9"
+                m2 = re.search(r"OS guesses:\s*(.+)", raw)
+                if m2:
+                    os_info = m2.group(1).strip()
+                else:
+                    # Device type sometimes on "Device type: general purpose"
+                    m3 = re.search(r"Device type:\s*(.+)", raw)
+                    if m3:
+                        os_info = m3.group(1).strip()
+
+            # Try to get MAC/vendor (local ARP)
+            mac = self._get_mac_address(ip) if hasattr(self, "_get_mac_address") else "Unknown"
+            mac_vendor = self._get_mac_vendor(mac) if hasattr(self, "_get_mac_vendor") else None
+
+            # Infer device kind from ports/services/os/vendor using hybrid methodology
+            device_kind = self._infer_device_type(open_ports, services, os_info, mac_vendor, mac)
+
+            return {
+                "open_ports": open_ports,
+                "os": os_info or "Unknown",
+                "services": services,
+                "nmap_output": raw,
+                "mac": mac,
+                "mac_vendor": mac_vendor,
+                "device": device_kind
+            }
+
+        except subprocess.TimeoutExpired:
+            console.print(f"[yellow]Nmap timed out scanning {ip}[/yellow]")
+            return {"open_ports": [], "os": "Unknown", "services": [], "nmap_output": ""}
+        except Exception as e:
+            console.print(f"[red]Error scanning {ip}: {e}[/red]")
+            return {"open_ports": [], "os": "Unknown", "services": [], "nmap_output": ""}
+    
 
 def main():
     """Main entry point."""
-    app = NetHawk()
-    app.run()
-
+    # Check if running on Linux
+    if sys.platform != "linux":
+        console.print("[red]NetHawk is designed for Linux systems only![/red]")
+        sys.exit(1)
+    
+    # Check if running as root
+    if os.geteuid() != 0:
+        console.print("[yellow]Warning: Some features may require root privileges[/yellow]")
+        console.print("[blue]Consider running with: sudo python3 NetHawk.py[/blue]")
+    
+    # Create NetHawk instance and run
+    nethawk = NetHawk()
+    nethawk.run()
 
 if __name__ == "__main__":
     main()
