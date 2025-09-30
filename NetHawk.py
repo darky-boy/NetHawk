@@ -1921,30 +1921,59 @@ class NetHawk:
             console.print(f"[red]Error saving vulnerabilities: {e}[/red]")
     
     def web_application_scanning(self):
-        """Web application vulnerability scanning."""
-        console.print("[bold red]Web Application Scanning[/bold red]")
+        """Simple web application vulnerability scanning using nikto."""
+        console.print("[bold red]🌐 Web Application Scanning[/bold red]")
         console.print("=" * 50)
         
-        # Check for web scanning tools
+        # Check if nikto is available
         if not self.tools_available.get("nikto", False):
-            console.print("[red]nikto not found! Please install nikto.[/red]")
+            console.print("[red]❌ nikto not found! Please install nikto.[/red]")
+            console.print("[blue]Install: sudo apt install nikto[/blue]")
             return
         
         # Get target URL with validation
-        while True:
-            target_url = Prompt.ask("Enter target URL (e.g., http://192.168.1.1)")
-            if target_url.startswith(('http://', 'https://')):
-                break
-        else:
-                console.print("[red]Please enter a valid URL starting with http:// or https://[/red]")
+        console.print(f"\n[bold]🎯 Target Selection:[/bold]")
+        target_url = Prompt.ask("Enter target URL (e.g., http://192.168.1.1)", default="")
         
-        console.print(f"[blue]Starting web application scan on {target_url}...[/blue]")
+        if not target_url:
+            console.print("[red]❌ No target URL specified![/red]")
+            return
+        
+        # Validate URL format
+        if not target_url.startswith(('http://', 'https://')):
+            console.print("[red]❌ URL must start with http:// or https://[/red]")
+            console.print("[blue]Example: http://192.168.1.1 or https://example.com[/blue]")
+            return
+        
+        console.print(f"\n[blue]🎯 Target: {target_url}[/blue]")
+        
+        # Scan options
+        console.print(f"\n[bold]⚙️ Scan Options:[/bold]")
+        scan_type = self.validate_input(
+            "Select scan type (1=Quick, 2=Standard, 3=Comprehensive): ",
+            ["1", "2", "3"]
+        )
+        
+        # Build nikto command based on scan type
+        if scan_type == "1":  # Quick
+            cmd = ["nikto", "-h", target_url, "-Tuning", "1,2,3,4,5", "-timeout", "10"]
+            scan_name = "Quick Web Application Scan"
+            timeout = 300  # 5 minutes
+        elif scan_type == "2":  # Standard
+            cmd = ["nikto", "-h", target_url, "-Tuning", "1,2,3,4,5,6,7", "-timeout", "15"]
+            scan_name = "Standard Web Application Scan"
+            timeout = 600  # 10 minutes
+        else:  # Comprehensive
+            cmd = ["nikto", "-h", target_url, "-Tuning", "0", "-timeout", "20", "-evasion", "1"]
+            scan_name = "Comprehensive Web Application Scan"
+            timeout = 1200  # 20 minutes
+        
+        console.print(f"\n[blue]🚀 Starting {scan_name}...[/blue]")
+        console.print(f"[yellow]This may take several minutes depending on target[/yellow]")
+        console.print(f"[blue]Running: {' '.join(cmd)}[/blue]")
         
         try:
             # Run nikto scan with progress
-            output_file = os.path.join(self.vulns_path, f"nikto_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
-            cmd = ["nikto", "-h", target_url, "-Format", "json", "-output", output_file]
-        
             with Progress(
                 SpinnerColumn(),
                 TextColumn("[progress.description]{task.description}"),
@@ -1952,53 +1981,147 @@ class NetHawk:
                 TimeElapsedColumn(),
                 console=console
             ) as progress:
-                task = progress.add_task("Scanning web application...", total=100)
+                task = progress.add_task(f"Scanning {target_url}...", total=timeout)
                 
-                # Start nikto in background
+                # Start the scan
                 process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
                 
-                # Show progress with longer timeout for web scans
-                for i in range(600):  # 10 minutes max for web scans
-                    progress.update(task, description=f"Scanning {target_url}... {i+1}/600s")
+                # Show progress
+                for i in range(timeout):
+                    progress.update(task, description=f"Scanning {target_url}... {i+1}/{timeout}s")
                     time.sleep(1)
                     
                     # Check if process finished
                     if process.poll() is not None:
-                        progress.update(task, description="Web scan completed!")
+                        progress.update(task, description="Scan completed!")
                         break
                 
                 # Get results
                 stdout, stderr = process.communicate()
-                result = type('obj', (object,), {'returncode': process.returncode, 'stdout': stdout, 'stderr': stderr})()
             
-            if result.returncode == 0:
-                console.print(f"\n[bold green]📊 WEB APPLICATION SCAN RESULTS[/bold green]")
-                console.print(f"[blue]Target: {target_url}[/blue]")
-                console.print(f"[yellow]Scan Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/yellow]")
+            # Parse and display results
+            if process.returncode == 0:
+                console.print(f"\n[green]✅ Web application scan completed![/green]")
                 
-                # Show detailed results in terminal
-                if result.stdout:
-                    console.print(f"\n[bold cyan]SCAN RESULTS:[/bold cyan]")
-                    lines = result.stdout.split('\n')
-                    for line in lines:
-                        if line.strip():
-                            console.print(f"[blue]{line}[/blue]")
+                # Parse vulnerabilities
+                vulnerabilities = self._parse_web_vulnerabilities(stdout)
                 
-                console.print(f"\n[bold green]✅ Web application scan completed![/bold green]")
-                console.print(f"[blue]Results displayed above - no files saved[/blue]")
+                if vulnerabilities:
+                    console.print(f"\n[bold green]📊 WEB APPLICATION SCAN RESULTS[/bold green]")
+                    console.print(f"[blue]Target: {target_url}[/blue]")
+                    console.print(f"[green]Vulnerabilities Found: {len(vulnerabilities)}[/green]")
+                    console.print(f"[yellow]Scan Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/yellow]")
+                    
+                    # Display vulnerabilities
+                    console.print(f"\n[bold cyan]🔍 DISCOVERED VULNERABILITIES:[/bold cyan]")
+                    for i, vuln in enumerate(vulnerabilities, 1):
+                        console.print(f"\n[bold]Vulnerability {i}:[/bold]")
+                        console.print(f"  [red]Title:[/red] {vuln['title']}")
+                        console.print(f"  [yellow]Severity:[/yellow] {vuln['severity']}")
+                        console.print(f"  [blue]Description:[/blue] {vuln['description']}")
+                        if vuln.get('cve'):
+                            console.print(f"  [magenta]CVE:[/magenta] {vuln['cve']}")
+                    
+                    # Save results
+                    self._save_web_scan_results(vulnerabilities, target_url)
+                    
+                else:
+                    console.print(f"\n[yellow]⚠️ No vulnerabilities found.[/yellow]")
+                    console.print(f"[blue]Target appears to be secure or scan was inconclusive[/blue]")
+                    console.print(f"[yellow]Note: This doesn't guarantee the target is completely secure[/yellow]")
+                
+                # Show raw output for reference
+                if stdout:
+                    console.print(f"\n[bold cyan]📋 Raw Scan Output:[/bold cyan]")
+                    console.print(f"[dim]{stdout[:1000]}{'...' if len(stdout) > 1000 else ''}[/dim]")
+                
             else:
-                console.print(f"[red]Web application scan failed: {result.stderr}[/red]")
-                console.print(f"[blue]Partial output: {result.stdout[:500]}...[/blue]")
-                
-                # Show some results if available
-                if result.stdout:
-                    console.print(f"[yellow]Scan output:[/yellow]")
-                    console.print(result.stdout[:500] + "..." if len(result.stdout) > 500 else result.stdout)
+                console.print(f"[red]❌ Web application scan failed![/red]")
+                console.print(f"[yellow]Error: {stderr[:500] if stderr else 'Unknown error'}[/yellow]")
+                if stdout:
+                    console.print(f"[blue]Partial output: {stdout[:500]}...[/blue]")
                 
         except subprocess.TimeoutExpired:
-            console.print("[yellow]Web application scan timed out[/yellow]")
+            console.print(f"[yellow]⏰ Web application scan timed out after {timeout} seconds[/yellow]")
         except Exception as e:
-            console.print(f"[red]Error during web application scanning: {e}[/red]")
+            console.print(f"[red]❌ Error during web application scanning: {e}[/red]")
+        
+        console.print(f"\n[yellow]Press Ctrl+C to stop[/yellow]")
+    
+    def _parse_web_vulnerabilities(self, nikto_output):
+        """Parse nikto output to extract web vulnerabilities with simple method."""
+        vulnerabilities = []
+        lines = nikto_output.split('\n')
+        
+        current_vuln = None
+        for line in lines:
+            line = line.strip()
+            
+            # Look for vulnerability markers in nikto output
+            if '+ OSVDB-' in line or '+ ' in line and ('vulnerable' in line.lower() or 'risk' in line.lower()):
+                if current_vuln:
+                    vulnerabilities.append(current_vuln)
+                
+                # Extract vulnerability title
+                if '+ OSVDB-' in line:
+                    title = line.split('+ OSVDB-')[1].strip()
+                else:
+                    title = line.split('+ ')[1].strip() if '+ ' in line else line
+                
+                current_vuln = {
+                    "title": title,
+                    "description": "",
+                    "severity": "Unknown",
+                    "cve": ""
+                }
+                
+                # Try to extract CVE if present
+                if 'CVE-' in title:
+                    cve_match = re.search(r'CVE-\d{4}-\d+', title)
+                    if cve_match:
+                        current_vuln["cve"] = cve_match.group()
+                
+                # Determine severity based on keywords
+                title_lower = title.lower()
+                if any(word in title_lower for word in ['critical', 'remote code execution', 'rce', 'sql injection']):
+                    current_vuln["severity"] = "Critical"
+                elif any(word in title_lower for word in ['high', 'buffer overflow', 'xss', 'cross-site']):
+                    current_vuln["severity"] = "High"
+                elif any(word in title_lower for word in ['medium', 'information disclosure', 'directory traversal']):
+                    current_vuln["severity"] = "Medium"
+                elif any(word in title_lower for word in ['low', 'info', 'version disclosure']):
+                    current_vuln["severity"] = "Low"
+                else:
+                    current_vuln["severity"] = "Unknown"
+                    
+            elif current_vuln and line and not line.startswith('+') and not line.startswith('-'):
+                # Add to description
+                current_vuln["description"] += line + " "
+        
+        if current_vuln:
+            vulnerabilities.append(current_vuln)
+        
+        return vulnerabilities
+    
+    def _save_web_scan_results(self, vulnerabilities, target_url):
+        """Save web scan results to JSON file."""
+        results = {
+            "timestamp": datetime.now().isoformat(),
+            "target": target_url,
+            "vulnerabilities": vulnerabilities,
+            "total_count": len(vulnerabilities)
+        }
+        
+        # Create safe filename from URL
+        safe_url = target_url.replace('http://', '').replace('https://', '').replace('/', '_').replace(':', '_')
+        output_file = os.path.join(self.vulns_path, f"web_scan_{safe_url}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
+        
+        try:
+            with open(output_file, 'w') as f:
+                json.dump(results, f, indent=2)
+            console.print(f"[green]✅ Web scan results saved to: {output_file}[/green]")
+        except Exception as e:
+            console.print(f"[yellow]⚠️ Could not save results: {e}[/yellow]")
     
     def smb_enumeration(self):
         """SMB/Windows enumeration."""
