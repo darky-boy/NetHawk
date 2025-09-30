@@ -2546,12 +2546,25 @@ class NetHawk:
                 continue
                 
             lines = result.split('\n')
+            in_answer_section = False
+            
             for line in lines:
                 line = line.strip()
                 
-                # Parse A records - look for lines with domain and IN A
-                if query_type == "A" and "IN A" in line and domain in line and not line.startswith(';'):
-                    # Extract IP from the end of the line
+                # Check if we're in the ANSWER SECTION
+                if ";; ANSWER SECTION:" in line:
+                    in_answer_section = True
+                    continue
+                elif line.startswith(";;") and "SECTION:" in line:
+                    in_answer_section = False
+                    continue
+                
+                # Only parse lines in the ANSWER SECTION
+                if not in_answer_section or line.startswith(';'):
+                    continue
+                
+                # Parse A records
+                if query_type == "A" and "IN A" in line and domain in line:
                     parts = line.split()
                     if len(parts) >= 4 and parts[-2] == "A":
                         ip = parts[-1]
@@ -2563,7 +2576,7 @@ class NetHawk:
                             })
                 
                 # Parse MX records
-                elif query_type == "MX" and "IN MX" in line and not line.startswith(';'):
+                elif query_type == "MX" and "IN MX" in line:
                     parts = line.split()
                     if len(parts) >= 4 and parts[-2] == "MX":
                         priority = parts[-3]
@@ -2575,7 +2588,7 @@ class NetHawk:
                         })
                 
                 # Parse NS records
-                elif query_type == "NS" and "IN NS" in line and not line.startswith(';'):
+                elif query_type == "NS" and "IN NS" in line:
                     parts = line.split()
                     if len(parts) >= 3 and parts[-2] == "NS":
                         nameserver = parts[-1].rstrip('.')
@@ -2586,7 +2599,7 @@ class NetHawk:
                         })
                 
                 # Parse TXT records
-                elif query_type == "TXT" and "IN TXT" in line and not line.startswith(';'):
+                elif query_type == "TXT" and "IN TXT" in line:
                     # Extract TXT content - it might be quoted
                     if '"' in line:
                         start = line.find('"')
@@ -2612,7 +2625,7 @@ class NetHawk:
                                 })
                 
                 # Parse CNAME records
-                elif query_type == "CNAME" and "IN CNAME" in line and not line.startswith(';'):
+                elif query_type == "CNAME" and "IN CNAME" in line:
                     parts = line.split()
                     if len(parts) >= 3 and parts[-2] == "CNAME":
                         cname_target = parts[-1].rstrip('.')
@@ -2623,7 +2636,7 @@ class NetHawk:
                         })
                 
                 # Parse SOA records
-                elif query_type == "SOA" and "IN SOA" in line and not line.startswith(';'):
+                elif query_type == "SOA" and "IN SOA" in line:
                     parts = line.split()
                     if len(parts) >= 7 and parts[-6] == "SOA":
                         primary_ns = parts[-5].rstrip('.')
