@@ -872,7 +872,7 @@ class NetHawk:
                 console.print(f"[blue]Trying individual ping scans...[/blue]")
                 for i, ip in enumerate(network.hosts()):
                     if i >= 254:  # Limit to /24
-                break
+                        break
         
                     progress.update(task, description=f"Ping scanning {ip}... ({i+1}/{total_ips})")
                     
