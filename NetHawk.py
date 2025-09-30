@@ -478,10 +478,10 @@ class NetHawk:
             # Start the scan process
             try:
                 process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, text=True)
-        except FileNotFoundError:
+            except FileNotFoundError:
                 console.print(f"[red]Error: 'airodump-ng' command not found![/red]")
                 console.print(f"[blue]Please install aircrack-ng package: sudo apt install aircrack-ng[/blue]")
-            return
+                return
 
             # Real-time network discovery
             console.print(f"[blue]🔍 Scanning for networks...[/blue]")
