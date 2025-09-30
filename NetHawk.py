@@ -1718,33 +1718,49 @@ class NetHawk:
         except Exception as e:
             console.print(f"[yellow]⚠️  Could not verify handshake: {e}[/yellow]")
             return False
-
-        console.print(f"\n[bold green]📡 Available WiFi Interfaces:[/bold green]")
-        for i, iface in enumerate(interfaces, 1):
-            console.print(f"  [cyan]{i}.[/cyan] {iface}")
+    
+    def vulnerability_assessment(self):
+        """Perform vulnerability assessment on discovered hosts."""
+        console.print("[bold red]Vulnerability Assessment[/bold red]")
+        console.print("=" * 50)
         
-        iface_choice = self.validate_input(
-            "\n[bold]Select interface to use:[/bold] ", 
-            [str(i) for i in range(1, len(interfaces) + 1)]
-        )
-        iface = interfaces[int(iface_choice) - 1]
-        
-        console.print(f"\n[bold blue]🎯 TARGET NETWORK CONFIGURATION[/bold blue]")
-        
-        # Enhanced target information collection
-        bssid = Prompt.ask("[bold]Enter target BSSID (MAC address)[/bold]")
-        essid = Prompt.ask("[bold]Enter target ESSID (network name)[/bold]")
-        channel = Prompt.ask("[bold]Enter target channel[/bold]", default="6")
-        
-        # Enhanced BSSID validation
-        if not re.match(r'^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$', bssid):
-            console.print("[red]❌ Invalid BSSID format! Use format: XX:XX:XX:XX:XX:XX[/red]")
+        # Check for vulnerability scanning tools
+        if not self.tools_available.get("nmap", False):
+            console.print("[red]nmap not found! Please install nmap.[/red]")
             return
         
-        # Enhanced target display
-        console.print(f"\n[bold green]📊 Target Network Information:[/bold green]")
-        console.print(f"  [cyan]ESSID:[/cyan] {essid}")
-        console.print(f"  [cyan]BSSID:[/cyan] {bssid}")
+        # Get target IP or network
+        target = Prompt.ask("[bold]Enter target IP or network (e.g., 192.168.1.1 or 192.168.1.0/24)[/bold]")
+        
+        if not target:
+            console.print("[red]No target specified![/red]")
+            return
+        
+        # Run vulnerability scan
+        console.print(f"[blue]Running vulnerability assessment on {target}...[/blue]")
+        
+        try:
+            # Use nmap with vulnerability scripts
+            vuln_cmd = [
+                "nmap", "-sV", "--script", "vuln", 
+                "--script-args", "unsafe=1",
+                target
+            ]
+            
+            result = subprocess.run(vuln_cmd, capture_output=True, text=True, timeout=300)
+            
+            if result.returncode == 0:
+                console.print(f"[green]✓ Vulnerability scan completed[/green]")
+                console.print(f"[blue]Results:[/blue]")
+                console.print(result.stdout)
+            else:
+                console.print(f"[yellow]⚠️  Scan completed with warnings[/yellow]")
+                console.print(result.stderr)
+                
+        except subprocess.TimeoutExpired:
+            console.print(f"[yellow]⚠️  Vulnerability scan timed out[/yellow]")
+        except Exception as e:
+            console.print(f"[red]Error during vulnerability scan: {e}[/red]")
         console.print(f"  [cyan]Channel:[/cyan] {channel}")
         console.print(f"  [cyan]Interface:[/cyan] {iface}")
         
@@ -1920,35 +1936,35 @@ class NetHawk:
                 console.print(f"\n[bold blue]📊 CAPTURE PROGRESS[/bold blue]")
                 
                 with Progress(
-                SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                BarColumn(),
-                TimeElapsedColumn(),
-                console=console
-            ) as progress:
-                task = progress.add_task("Capturing handshake...", total=capture_duration)
-                
-                for i in range(capture_duration):
-                    elapsed = i + 1
-                    remaining = capture_duration - elapsed
+                    SpinnerColumn(),
+                    TextColumn("[progress.description]{task.description}"),
+                    BarColumn(),
+                    TimeElapsedColumn(),
+                    console=console
+                ) as progress:
+                    task = progress.add_task("Capturing handshake...", total=capture_duration)
                     
-                    # Update progress description
-                    if use_deauth and i < 5:
-                        status = f"Deauth attack in progress... {elapsed}/{capture_duration}s"
-                    elif i < capture_duration // 2:
-                        status = f"Waiting for handshake... {elapsed}/{capture_duration}s"
-                    else:
-                        status = f"Monitoring for handshake... {elapsed}/{capture_duration}s"
+                    for i in range(capture_duration):
+                        elapsed = i + 1
+                        remaining = capture_duration - elapsed
+                        
+                        # Update progress description
+                        if use_deauth and i < 5:
+                            status = f"Deauth attack in progress... {elapsed}/{capture_duration}s"
+                        elif i < capture_duration // 2:
+                            status = f"Waiting for handshake... {elapsed}/{capture_duration}s"
+                        else:
+                            status = f"Monitoring for handshake... {elapsed}/{capture_duration}s"
+                        
+                        progress.update(task, description=status)
+                        
+                        # Show periodic status updates
+                        if elapsed % 10 == 0:
+                            console.print(f"[blue]Status: {status} (remaining: {remaining}s)[/blue]")
+                        
+                        time.sleep(1)
                     
-                    progress.update(task, description=status)
-                    
-                    # Show periodic status updates
-                    if elapsed % 10 == 0:
-                        console.print(f"[blue]Status: {status} (remaining: {remaining}s)[/blue]")
-                    
-                    time.sleep(1)
-                
-                progress.update(task, description="Capture complete!")
+                    progress.update(task, description="Capture complete!")
             
             # Stop processes gracefully
             console.print(f"\n[blue]Stopping capture processes...[/blue]")
