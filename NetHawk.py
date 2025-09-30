@@ -1478,11 +1478,6 @@ class NetHawk:
                 if result.stdout:
                     console.print(f"[yellow]Scan output:[/yellow]")
                     console.print(result.stdout[:500] + "..." if len(result.stdout) > 500 else result.stdout)
-            else:
-                console.print(f"[red]Web application scan failed: {result.stderr}[/red]")
-                if result.stdout:
-                    console.print(f"[yellow]Partial output:[/yellow]")
-                    console.print(result.stdout[:300] + "..." if len(result.stdout) > 300 else result.stdout)
                 
         except subprocess.TimeoutExpired:
             console.print("[yellow]Web application scan timed out[/yellow]")
