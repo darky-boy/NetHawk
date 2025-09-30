@@ -721,6 +721,9 @@ class NetHawk:
         console.print(f"[blue]Auto-detecting your current network...[/blue]")
         target = self._get_current_network()
         
+        # Debug: Show what target was detected
+        console.print(f"[blue]Debug: Detected target = '{target}'[/blue]")
+        
         if target:
             console.print(f"[green]✓ Detected network: {target}[/green]")
             if not Confirm.ask(f"Scan detected network {target}?"):
@@ -998,6 +1001,23 @@ class NetHawk:
             
         except Exception:
             return False
+    
+    def _get_mac_address(self, ip):
+        """Get MAC address for an IP using ARP table."""
+        try:
+            # Try to get MAC from ARP table
+            result = subprocess.run(["arp", "-n", ip], capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                lines = result.stdout.split('\n')
+                for line in lines:
+                    if ip in line and ':' in line:
+                        parts = line.split()
+                        for part in parts:
+                            if ':' in part and len(part.split(':')) == 6:
+                                return part
+            return "Unknown"
+        except Exception:
+            return "Unknown"
     
     def _aggressive_port_scan_with_progress(self, hosts, port_range, scan_type):
         """AGGRESSIVE port scanning with real-time progress and results."""
