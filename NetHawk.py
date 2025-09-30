@@ -39,6 +39,7 @@ class NetHawk:
         self.handshakes_path = os.path.join(self.session_path, "handshakes")
         self.logs_path = os.path.join(self.session_path, "logs")
         self.vulns_path = os.path.join(self.session_path, "vulnerabilities")
+        self.reports_path = os.path.join(self.session_path, "reports")
         self._create_session_directories()
         
         # Tool availability cache
@@ -72,7 +73,8 @@ class NetHawk:
             self.session_path,
             self.handshakes_path,
             self.logs_path,
-            self.vulns_path
+            self.vulns_path,
+            self.reports_path
         ]
         
         for directory in directories:
