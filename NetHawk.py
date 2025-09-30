@@ -229,7 +229,7 @@ class NetHawk:
             # Check current mode
             if "monitor" in result.stdout.lower():
                 console.print(f"[green]✓ {iface} is already in monitor mode[/green]")
-            return True
+                return True
     
             # Try to set monitor mode to test if it's supported
             console.print(f"[blue]Testing monitor mode capability...[/blue]")
@@ -1239,7 +1239,7 @@ class NetHawk:
         # Validate BSSID format
         if not re.match(r'^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$', bssid):
             console.print("[red]Invalid BSSID format! Use format: XX:XX:XX:XX:XX:XX[/red]")
-                return
+            return
             
         console.print(f"[blue]Target: {essid} ({bssid}) on channel {channel}[/blue]")
         
@@ -1280,13 +1280,13 @@ class NetHawk:
                 deauth_process = subprocess.Popen(deauth_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             
             # Show progress for handshake capture
-                    with Progress(
-                        SpinnerColumn(),
-                        TextColumn("[progress.description]{task.description}"),
-                        BarColumn(),
-                        TimeElapsedColumn(),
-                        console=console
-                    ) as progress:
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TimeElapsedColumn(),
+                console=console
+            ) as progress:
                 task = progress.add_task("Capturing handshake...", total=30)
                 
                 for i in range(30):
@@ -1406,7 +1406,7 @@ class NetHawk:
         lines = nmap_output.split('\n')
         
         current_vuln = None
-                for line in lines:
+        for line in lines:
             if 'VULNERABLE:' in line:
                 if current_vuln:
                     vulnerabilities.append(current_vuln)
@@ -1636,8 +1636,7 @@ class NetHawk:
             domain = Prompt.ask("Enter target domain")
             if domain and '.' in domain and not domain.startswith('.'):
                 break
-        else:
-                console.print("[red]Please enter a valid domain (e.g., example.com)[/red]")
+            console.print("[red]Please enter a valid domain (e.g., example.com)[/red]")
         
         console.print(f"[blue]Starting DNS reconnaissance on {domain}...[/blue]")
         
