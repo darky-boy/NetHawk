@@ -826,8 +826,9 @@ class NetHawk:
                     console.print(f"\n[bold]Host {i}:[/bold]")
                     console.print(f"  [green]IP Address:[/green] {host.get('ip', 'Unknown')}")
                     console.print(f"  [green]Status:[/green] {host.get('status', 'Unknown')}")
-                    if host.get('mac') and host.get('mac') != 'Unknown':
-                        console.print(f"  [green]MAC Address:[/green] {host.get('mac')}")
+                    mac = host.get('mac', 'Unknown')
+                    if mac and mac != 'Unknown':
+                        console.print(f"  [green]MAC Address:[/green] {mac}")
                     if host.get('open_ports'):
                         console.print(f"  [green]Open Ports:[/green] {len(host['open_ports'])} ports")
                         for port in host['open_ports'][:5]:  # Show first 5 ports
@@ -893,6 +894,7 @@ class NetHawk:
                         hosts.append({
                             "ip": str(ip),
                             "status": "up",
+                            "mac": self._get_mac_address(str(ip)),
                             "open_ports": [],
                             "os": "Unknown",
                             "services": []
@@ -928,6 +930,7 @@ class NetHawk:
                                 hosts.append({
                                     "ip": ip,
                                     "status": "up",
+                                    "mac": self._get_mac_address(ip),
                                     "open_ports": [],
                                     "os": "Unknown",
                                     "services": []
@@ -1124,9 +1127,9 @@ class NetHawk:
         for host in hosts:
             open_ports_str = ", ".join([p["port"] for p in host["open_ports"]]) if host["open_ports"] else "None"
             table.add_row(
-                host["ip"],
-                host["status"],
-                host["mac"],
+                host.get("ip", "Unknown"),
+                host.get("status", "Unknown"),
+                host.get("mac", "Unknown"),
                 open_ports_str,
                 host.get("os", "Unknown")
             )
