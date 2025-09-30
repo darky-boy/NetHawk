@@ -2396,23 +2396,75 @@ class NetHawk:
             console.print(f"[yellow]⚠️ Could not save results: {e}[/yellow]")
     
     def dns_reconnaissance(self):
-        """DNS reconnaissance."""
-        console.print("[bold red]DNS Reconnaissance[/bold red]")
+        """Simple DNS reconnaissance using dig and nslookup."""
+        console.print("[bold red]🌐 DNS Reconnaissance[/bold red]")
         console.print("=" * 50)
         
-        # Check for DNS tools
+        # Check if dig is available
         if not self.tools_available.get("dig", False):
-            console.print("[red]dig not found! Please install dnsutils.[/red]")
+            console.print("[red]❌ dig not found! Please install dnsutils.[/red]")
+            console.print("[blue]Install: sudo apt install dnsutils[/blue]")
             return
         
         # Get target domain with validation
-        while True:
-            domain = Prompt.ask("Enter target domain")
-            if domain and '.' in domain and not domain.startswith('.'):
-                break
-            console.print("[red]Please enter a valid domain (e.g., example.com)[/red]")
+        console.print(f"\n[bold]🎯 Target Selection:[/bold]")
+        domain = Prompt.ask("Enter target domain (e.g., example.com)", default="")
         
-        console.print(f"[blue]Starting DNS reconnaissance on {domain}...[/blue]")
+        if not domain:
+            console.print("[red]❌ No domain specified![/red]")
+            return
+        
+        # Validate domain format
+        if '.' not in domain or domain.startswith('.'):
+            console.print("[red]❌ Invalid domain format![/red]")
+            console.print("[blue]Example: example.com, google.com, github.com[/blue]")
+            return
+        
+        console.print(f"\n[blue]🎯 Target: {domain}[/blue]")
+        
+        # Scan options
+        console.print(f"\n[bold]⚙️ Scan Options:[/bold]")
+        scan_type = self.validate_input(
+            "Select scan type (1=Quick, 2=Standard, 3=Comprehensive): ",
+            ["1", "2", "3"]
+        )
+        
+        # Build DNS queries based on scan type
+        if scan_type == "1":  # Quick
+            queries = [
+                ("A", f"dig {domain} A"),
+                ("MX", f"dig {domain} MX"),
+                ("NS", f"dig {domain} NS")
+            ]
+            scan_name = "Quick DNS Reconnaissance"
+            timeout = 60  # 1 minute
+        elif scan_type == "2":  # Standard
+            queries = [
+                ("A", f"dig {domain} A"),
+                ("MX", f"dig {domain} MX"),
+                ("NS", f"dig {domain} NS"),
+                ("TXT", f"dig {domain} TXT"),
+                ("CNAME", f"dig www.{domain} CNAME")
+            ]
+            scan_name = "Standard DNS Reconnaissance"
+            timeout = 120  # 2 minutes
+        else:  # Comprehensive
+            queries = [
+                ("A", f"dig {domain} A"),
+                ("MX", f"dig {domain} MX"),
+                ("NS", f"dig {domain} NS"),
+                ("TXT", f"dig {domain} TXT"),
+                ("CNAME", f"dig www.{domain} CNAME"),
+                ("SOA", f"dig {domain} SOA"),
+                ("PTR", f"dig -x {domain}"),
+                ("ANY", f"dig {domain} ANY")
+            ]
+            scan_name = "Comprehensive DNS Reconnaissance"
+            timeout = 180  # 3 minutes
+        
+        console.print(f"\n[blue]🚀 Starting {scan_name}...[/blue]")
+        console.print(f"[yellow]This may take a few minutes depending on target[/yellow]")
+        console.print(f"[blue]Running {len(queries)} DNS queries...[/blue]")
         
         try:
             # Run DNS queries with progress
@@ -2425,48 +2477,159 @@ class NetHawk:
                 TimeElapsedColumn(),
                 console=console
             ) as progress:
-                task = progress.add_task("Performing DNS reconnaissance...", total=3)
+                task = progress.add_task(f"Querying {domain}...", total=len(queries))
                 
-                # A records
-                progress.update(task, description=f"Querying A records for {domain}...")
-                result = subprocess.run(["dig", domain, "A"], capture_output=True, text=True, timeout=30)
-                if result.returncode == 0:
-                    dns_results["A_records"] = result.stdout
-                progress.advance(task)
-                
-                # MX records
-                progress.update(task, description=f"Querying MX records for {domain}...")
-                result = subprocess.run(["dig", domain, "MX"], capture_output=True, text=True, timeout=30)
-                if result.returncode == 0:
-                    dns_results["MX_records"] = result.stdout
-                progress.advance(task)
-                
-                # NS records
-                progress.update(task, description=f"Querying NS records for {domain}...")
-                result = subprocess.run(["dig", domain, "NS"], capture_output=True, text=True, timeout=30)
-                if result.returncode == 0:
-                    dns_results["NS_records"] = result.stdout
-                progress.advance(task)
+                for query_type, cmd in queries:
+                    progress.update(task, description=f"Querying {query_type} records for {domain}...")
+                    
+                    try:
+                        result = subprocess.run(cmd.split(), capture_output=True, text=True, timeout=30)
+                        if result.returncode == 0:
+                            dns_results[query_type] = result.stdout
+                        else:
+                            dns_results[query_type] = f"Error: {result.stderr}"
+                    except subprocess.TimeoutExpired:
+                        dns_results[query_type] = "Timeout: Query took too long"
+                    except Exception as e:
+                        dns_results[query_type] = f"Error: {str(e)}"
+                    
+                    progress.advance(task)
             
-            console.print(f"\n[bold green]📊 DNS RECONNAISSANCE RESULTS[/bold green]")
-            console.print(f"[blue]Target: {domain}[/blue]")
-            console.print(f"[yellow]Scan Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/yellow]")
+            # Parse and display results
+            console.print(f"\n[green]✅ DNS reconnaissance completed![/green]")
             
-            # Show results in terminal
-            console.print(f"\n[bold cyan]DNS QUERY RESULTS:[/bold cyan]")
+            # Parse DNS information
+            dns_info = self._parse_dns_results(dns_results, domain)
+            
+            if dns_info:
+                console.print(f"\n[bold green]📊 DNS RECONNAISSANCE RESULTS[/bold green]")
+                console.print(f"[blue]Target: {domain}[/blue]")
+                console.print(f"[green]Information Found: {len(dns_info)} items[/green]")
+                console.print(f"[yellow]Scan Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/yellow]")
+                
+                # Display DNS information
+                console.print(f"\n[bold cyan]🔍 DISCOVERED DNS INFORMATION:[/bold cyan]")
+                for i, info in enumerate(dns_info, 1):
+                    console.print(f"\n[bold]Information {i}:[/bold]")
+                    console.print(f"  [red]Type:[/red] {info['type']}")
+                    console.print(f"  [yellow]Value:[/yellow] {info['value']}")
+                    console.print(f"  [blue]Description:[/blue] {info['description']}")
+                
+                # Save results
+                self._save_dns_results(dns_info, domain)
+                
+            else:
+                console.print(f"\n[yellow]⚠️ No DNS information found.[/yellow]")
+                console.print(f"[blue]Target may not have public DNS records or domain may not exist[/blue]")
+                console.print(f"[yellow]Note: This doesn't guarantee the target is completely secure[/yellow]")
+            
+            # Show raw output for reference
+            console.print(f"\n[bold cyan]📋 Raw DNS Output:[/bold cyan]")
             for query_type, result in dns_results.items():
-                if result:
-                    console.print(f"\n[bold]{query_type}:[/bold]")
-                    lines = result.split('\n')
-                    for line in lines:
-                        if line.strip():
-                            console.print(f"[blue]  {line}[/blue]")
-            
-            console.print(f"\n[bold green]✅ DNS reconnaissance completed![/bold green]")
-            console.print(f"[blue]Results displayed above - no files saved[/blue]")
-            
+                if result and "Error:" not in result and "Timeout:" not in result:
+                    console.print(f"\n[bold]{query_type} Records:[/bold]")
+                    console.print(f"[dim]{result[:500]}{'...' if len(result) > 500 else ''}[/dim]")
+                
         except Exception as e:
-            console.print(f"[red]Error during DNS reconnaissance: {e}[/red]")
+            console.print(f"[red]❌ Error during DNS reconnaissance: {e}[/red]")
+        
+        console.print(f"\n[yellow]Press Ctrl+C to stop[/yellow]")
+    
+    def _parse_dns_results(self, dns_results, domain):
+        """Parse DNS query results to extract useful information."""
+        dns_info = []
+        
+        for query_type, result in dns_results.items():
+            if "Error:" in result or "Timeout:" in result:
+                continue
+                
+            lines = result.split('\n')
+            for line in lines:
+                line = line.strip()
+                
+                # Parse A records
+                if query_type == "A" and "IN A" in line and domain in line:
+                    ip = line.split()[-1]
+                    if ip.replace('.', '').isdigit():
+                        dns_info.append({
+                            "type": "A Record",
+                            "value": f"{domain} -> {ip}",
+                            "description": "IPv4 address mapping for the domain"
+                        })
+                
+                # Parse MX records
+                elif query_type == "MX" and "IN MX" in line:
+                    parts = line.split()
+                    if len(parts) >= 4:
+                        priority = parts[-2]
+                        mailserver = parts[-1].rstrip('.')
+                        dns_info.append({
+                            "type": "MX Record",
+                            "value": f"{mailserver} (Priority: {priority})",
+                            "description": "Mail exchange server for the domain"
+                        })
+                
+                # Parse NS records
+                elif query_type == "NS" and "IN NS" in line:
+                    nameserver = line.split()[-1].rstrip('.')
+                    dns_info.append({
+                        "type": "NS Record",
+                        "value": nameserver,
+                        "description": "Name server responsible for the domain"
+                    })
+                
+                # Parse TXT records
+                elif query_type == "TXT" and "IN TXT" in line:
+                    txt_content = line.split('IN TXT')[1].strip().strip('"')
+                    if txt_content and len(txt_content) > 5:
+                        dns_info.append({
+                            "type": "TXT Record",
+                            "value": txt_content,
+                            "description": "Text record (may contain SPF, DKIM, or other info)"
+                        })
+                
+                # Parse CNAME records
+                elif query_type == "CNAME" and "IN CNAME" in line:
+                    cname_target = line.split()[-1].rstrip('.')
+                    dns_info.append({
+                        "type": "CNAME Record",
+                        "value": f"www.{domain} -> {cname_target}",
+                        "description": "Canonical name alias for the domain"
+                    })
+                
+                # Parse SOA records
+                elif query_type == "SOA" and "IN SOA" in line:
+                    parts = line.split()
+                    if len(parts) >= 7:
+                        primary_ns = parts[-7].rstrip('.')
+                        admin_email = parts[-6].rstrip('.')
+                        dns_info.append({
+                            "type": "SOA Record",
+                            "value": f"Primary NS: {primary_ns}, Admin: {admin_email}",
+                            "description": "Start of Authority record for the domain"
+                        })
+        
+        return dns_info
+    
+    def _save_dns_results(self, dns_info, domain):
+        """Save DNS reconnaissance results to JSON file."""
+        results = {
+            "timestamp": datetime.now().isoformat(),
+            "target": domain,
+            "dns_info": dns_info,
+            "total_count": len(dns_info)
+        }
+        
+        # Create safe filename from domain
+        safe_domain = domain.replace('.', '_').replace('/', '_')
+        output_file = os.path.join(self.vulns_path, f"dns_recon_{safe_domain}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
+        
+        try:
+            with open(output_file, 'w') as f:
+                json.dump(results, f, indent=2)
+            console.print(f"[green]✅ DNS reconnaissance results saved to: {output_file}[/green]")
+        except Exception as e:
+            console.print(f"[yellow]⚠️ Could not save results: {e}[/yellow]")
     
     def comprehensive_reporting(self):
         """Generate comprehensive security assessment report."""
