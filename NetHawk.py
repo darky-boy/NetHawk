@@ -1956,15 +1956,15 @@ class NetHawk:
         
         # Build nikto command based on scan type
         if scan_type == "1":  # Quick
-            cmd = ["nikto", "-h", target_url, "-Tuning", "1,2,3,4,5", "-timeout", "10", "-maxtime", "300s", "-Format", "txt"]
+            cmd = ["nikto", "-h", target_url, "-Tuning", "1,2,3,4,5", "-timeout", "10", "-maxtime", "300s"]
             scan_name = "Quick Web Application Scan"
             timeout = 300  # 5 minutes
         elif scan_type == "2":  # Standard
-            cmd = ["nikto", "-h", target_url, "-Tuning", "1,2,3,4,5,6,7", "-timeout", "15", "-maxtime", "600s", "-Format", "txt"]
+            cmd = ["nikto", "-h", target_url, "-Tuning", "1,2,3,4,5,6,7", "-timeout", "15", "-maxtime", "600s"]
             scan_name = "Standard Web Application Scan"
             timeout = 600  # 10 minutes
         else:  # Comprehensive
-            cmd = ["nikto", "-h", target_url, "-Tuning", "0", "-timeout", "20", "-maxtime", "1200s", "-evasion", "1", "-Format", "txt"]
+            cmd = ["nikto", "-h", target_url, "-Tuning", "0", "-timeout", "20", "-maxtime", "1200s", "-evasion", "1"]
             scan_name = "Comprehensive Web Application Scan"
             timeout = 1200  # 20 minutes
         
