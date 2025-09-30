@@ -1653,6 +1653,7 @@ class NetHawk:
             console.print(f"[blue]Session Path: {self.session_path}[/blue]")
             console.print(f"[blue]Handshakes Directory: {self.handshakes_path}[/blue]")
             console.print(f"[green]✅ All capture data saved to your session![/green]")
+            console.print(f"[yellow]Press Ctrl+C to stop[/yellow]")
             
         except KeyboardInterrupt:
             console.print(f"\n[yellow]⏹️ Capture stopped by user.[/yellow]")
