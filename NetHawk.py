@@ -528,6 +528,17 @@ class NetHawk:
             console.print(f"[blue]Results saved to: {output_file}*[/blue]")
             console.print(f"[yellow]Check the CSV files for detailed results[/yellow]")
             
+            # Show session storage message
+            console.print(f"\n[bold green]📁 Scan Results Stored in Session Files:[/bold green]")
+            console.print(f"[blue]Session Path: {self.session_path}[/blue]")
+            console.print(f"[blue]Logs Directory: {self.logs_path}[/blue]")
+            console.print(f"[yellow]Files created:[/yellow]")
+            console.print(f"[blue]  - {output_file}-01.csv (Access Points)[/blue]")
+            console.print(f"[blue]  - {output_file}-02.csv (Clients)[/blue]")
+            console.print(f"[blue]  - {output_file}-01.kismet.csv (Kismet format)[/blue]")
+            console.print(f"[blue]  - {output_file}-01.log.csv (Log format)[/blue]")
+            console.print(f"[green]✓ All scan data is automatically saved to your session![/green]")
+            
         except KeyboardInterrupt:
             console.print("\n[yellow]Scan stopped by user.[/yellow]")
         except Exception as e:
@@ -891,6 +902,14 @@ class NetHawk:
             with open(output_file, 'w') as f:
                 json.dump(results, f, indent=2)
             console.print(f"[green]✓ AGGRESSIVE results saved to: {output_file}[/green]")
+            
+            # Show session storage message
+            console.print(f"\n[bold green]📁 Scan Results Stored in Session Files:[/bold green]")
+            console.print(f"[blue]Session Path: {self.session_path}[/blue]")
+            console.print(f"[blue]Logs Directory: {self.logs_path}[/blue]")
+            console.print(f"[yellow]Files created:[/yellow]")
+            console.print(f"[blue]  - {os.path.basename(output_file)} (Active scan results)[/blue]")
+            console.print(f"[green]✓ All scan data is automatically saved to your session![/green]")
         except Exception as e:
             console.print(f"[red]Error saving results: {e}[/red]")
     
@@ -994,6 +1013,15 @@ class NetHawk:
             console.print(f"[green]✓ Advanced handshake capture completed![/green]")
             console.print(f"[blue]Handshake saved to: {output_file}*[/blue]")
             console.print("[yellow]Note: Use external tools like aircrack-ng to crack the handshake[/yellow]")
+            
+            # Show session storage message
+            console.print(f"\n[bold green]📁 Scan Results Stored in Session Files:[/bold green]")
+            console.print(f"[blue]Session Path: {self.session_path}[/blue]")
+            console.print(f"[blue]Handshakes Directory: {self.handshakes_path}[/blue]")
+            console.print(f"[yellow]Files created:[/yellow]")
+            console.print(f"[blue]  - {os.path.basename(output_file)}.cap (Handshake file)[/blue]")
+            console.print(f"[blue]  - {os.path.basename(output_file)}.csv (Capture data)[/blue]")
+            console.print(f"[green]✓ All capture data is automatically saved to your session![/green]")
             
         except KeyboardInterrupt:
             console.print("\n[yellow]Capture stopped by user.[/yellow]")
@@ -1120,6 +1148,14 @@ class NetHawk:
             with open(output_file, 'w') as f:
                 json.dump(results, f, indent=2)
             console.print(f"[green]✓ Vulnerabilities saved to: {output_file}[/green]")
+            
+            # Show session storage message
+            console.print(f"\n[bold green]📁 Scan Results Stored in Session Files:[/bold green]")
+            console.print(f"[blue]Session Path: {self.session_path}[/blue]")
+            console.print(f"[blue]Vulnerabilities Directory: {self.vulns_path}[/blue]")
+            console.print(f"[yellow]Files created:[/yellow]")
+            console.print(f"[blue]  - {os.path.basename(output_file)} (Vulnerability assessment)[/blue]")
+            console.print(f"[green]✓ All scan data is automatically saved to your session![/green]")
         except Exception as e:
             console.print(f"[red]Error saving vulnerabilities: {e}[/red]")
     
