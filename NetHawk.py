@@ -2541,12 +2541,18 @@ class NetHawk:
         """Parse DNS query results to extract useful information."""
         dns_info = []
         
+        console.print(f"[cyan]DEBUG: Starting DNS parsing for domain: {domain}[/cyan]")
+        console.print(f"[cyan]DEBUG: Query types available: {list(dns_results.keys())}[/cyan]")
+        
         for query_type, result in dns_results.items():
+            console.print(f"[cyan]DEBUG: Processing query type: {query_type}[/cyan]")
             if "Error:" in result or "Timeout:" in result:
+                console.print(f"[cyan]DEBUG: Skipping {query_type} due to error/timeout[/cyan]")
                 continue
                 
             lines = result.split('\n')
             in_answer_section = False
+            answer_lines_found = 0
             
             for line in lines:
                 line = line.strip()
@@ -2554,14 +2560,19 @@ class NetHawk:
                 # Check if we're in the ANSWER SECTION
                 if ";; ANSWER SECTION:" in line:
                     in_answer_section = True
+                    console.print(f"[cyan]DEBUG: Found ANSWER SECTION for {query_type}[/cyan]")
                     continue
                 elif line.startswith(";;") and "SECTION:" in line:
                     in_answer_section = False
+                    console.print(f"[cyan]DEBUG: Left ANSWER SECTION for {query_type}[/cyan]")
                     continue
                 
                 # Only parse lines in the ANSWER SECTION
                 if not in_answer_section or line.startswith(';'):
                     continue
+                
+                answer_lines_found += 1
+                console.print(f"[cyan]DEBUG: Processing answer line {answer_lines_found} for {query_type}: {line}[/cyan]")
                 
                 # Parse A records - look for lines like "google.com. 143 IN A 142.250.207.142"
                 if query_type == "A" and "IN A" in line:
