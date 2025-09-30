@@ -935,7 +935,7 @@ class NetHawk:
         """Use nmap for fast host discovery."""
         try:
             console.print(f"[blue]Running nmap host discovery on {network}...[/blue]")
-            cmd = ["nmap", "-sn", "-T4", str(network)]
+            cmd = ["nmap", "-sn", "-Pn", "-T4", str(network)]
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
             
             if result.returncode == 0:
@@ -1334,11 +1334,11 @@ class NetHawk:
             try:
                 # Build nmap command based on scan type
                 if scan_type == "fast":
-                    cmd = ["nmap", "-T4", "-F", "--top-ports", "1000", host["ip"]]
+                    cmd = ["nmap", "-Pn", "-T4", "-F", "--top-ports", "1000", host["ip"]]
                 elif scan_type == "aggressive":
-                    cmd = ["nmap", "-T4", "-A", "-sV", "-sC", "--script", "vuln", host["ip"]]
+                    cmd = ["nmap", "-Pn", "-T4", "-A", "-sV", "-sC", "--script", "vuln", host["ip"]]
                 else:  # comprehensive
-                    cmd = ["nmap", "-T4", "-A", "-sV", "-sC", "-O", "--script", "vuln,discovery", host["ip"]]
+                    cmd = ["nmap", "-Pn", "-T4", "-A", "-sV", "-sC", "-O", "--script", "vuln,discovery", host["ip"]]
                 
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
                 
@@ -1716,15 +1716,15 @@ class NetHawk:
         
         # Build nmap command based on scan type
         if scan_type == "1":  # Quick
-            cmd = ["nmap", "-T4", "-sV", "--script", "vuln", "--script-timeout", "30s", target]
+            cmd = ["nmap", "-Pn", "-T4", "-sV", "--script", "vuln", "--script-timeout", "30s", target]
             scan_name = "Quick Vulnerability Scan"
             timeout = 300  # 5 minutes
         elif scan_type == "2":  # Standard
-            cmd = ["nmap", "-T4", "-sV", "-sC", "--script", "vuln", target]
+            cmd = ["nmap", "-Pn", "-T4", "-sV", "-sC", "--script", "vuln", target]
             scan_name = "Standard Vulnerability Scan"
             timeout = 600  # 10 minutes
         else:  # Comprehensive
-            cmd = ["nmap", "-T3", "-sV", "-sC", "-O", "--script", "vuln", "--script-args", "unsafe=1", target]
+            cmd = ["nmap", "-Pn", "-T3", "-sV", "-sC", "-O", "--script", "vuln", "--script-args", "unsafe=1", target]
             scan_name = "Comprehensive Vulnerability Scan"
             timeout = 1200  # 20 minutes
         
