@@ -1038,17 +1038,20 @@ class NetHawk:
         if mac_address == "Unknown":
             return "Unknown"
         
-        # Get first 3 octets of MAC address
-        mac_prefix = mac_address[:8].upper()
+        # Normalize MAC address format (remove colons, convert to uppercase)
+        mac_clean = mac_address.replace(":", "").replace("-", "").upper()
+        
+        # Get first 6 characters (OUI)
+        oui = mac_clean[:6]
         
         # Common OUI prefixes for device types
-        if mac_prefix.startswith(("00:1B:63", "00:1C:42", "00:23:12", "00:25:00", "00:26:08")):
+        if oui in ["001B63", "001C42", "002312", "002500", "002608", "040CCE", "045453", "087402", "0C74C2", "1093E9", "14109F", "186590", "1C1B0D", "1C36BB", "1CABA7", "20C9D0", "24A074", "283737", "28CFDA", "2C337A", "2CB43A", "3090AB", "34159E", "34A395", "38C986", "3C0754", "3C2EF9", "3CA82A", "40331A", "40A6D9", "442A60", "48A6D9", "4C3275", "4C57CA", "4C8D79", "50EAD6", "54724F", "58B035", "5C5948", "5C95AE", "600308", "60334B", "60C547", "60FACD", "64B9E8", "680927", "685B35", "68967B", "68D93C", "6C198F", "6C4008", "6C72E7", "6C9466", "701124", "70480F", "705681", "70CD60", "70DEE2", "74E2F5", "7831C1", "784F43", "78CA39", "7C04D0", "7C6D62", "7CD1C3", "800655", "80BE05", "80E650", "843835", "84B153", "8863DF", "88DEA9", "8C2DAA", "8C5877", "8C8590", "8CFABA", "9027E4", "90840D", "90A4DE", "90B931", "94E6F7", "9803D8", "98CA33", "9C04EB", "9C207B", "9C84BF", "9C8E99", "A0999B", "A0D795", "A45E60", "A4B197", "A4C361", "A860B6", "A8968A", "A8BBCF", "A8F751", "AC1F74", "AC3C0B", "AC61EA", "AC87A3", "ACDE48", "B065BD", "B09FBA", "B418D1", "B4527E", "B4F0AB", "B8098A", "B817C2", "B853AC", "B8782E", "B8C75D", "B8E856", "B8F6B1", "BC52B7", "BC671C", "BC926B", "BCEC5D", "C0255C", "C06394", "C0CECD", "C42C03", "C48466", "C4B301", "C82A14", "C869CD", "C8BCC8", "C8E0EB", "CC08E0", "CC25EF", "CC29F5", "CC785F", "D0034B", "D023DB", "D0A637", "D49A20", "D4D252", "D83062", "D89695", "D8A25E", "D8CF9C", "DC2B2A", "DC3745", "DC56E7", "DCA904", "E0ACCB", "E425E7", "E48D8C", "E4B318", "E4C63D", "E84040", "E8802E", "E8B2AC", "E8D03C", "EC3586", "EC89F5", "ECADB8", "F01898", "F02475", "F04F7C", "F07959", "F0DBE2", "F40F24", "F431C3", "F45C89", "F45EAB", "F46D04", "F48E38", "F49F54", "F4CB52", "F4D488", "F81EDF", "F81654", "F82FA8", "F84D89", "F866F2", "F88E85", "F896EA", "FC253F", "FC64BA", "FC94CE", "FCDBB3", "FCE998"]:
             return "Apple Device (iPhone/iPad/Mac)"
-        elif mac_prefix.startswith(("00:15:99", "00:16:6B", "00:17:C9", "00:18:39")):
+        elif oui in ["001599", "00166B", "0017C9", "001839", "001A8A", "001B98", "001C43", "001D7E", "001E75", "001F5B", "00214C", "002258", "002339", "002454", "002566", "00265D", "002719", "00280F", "002915", "002A5A", "002B67", "002C44", "002D76", "002EC8", "002F3A", "00304D", "003146", "003221", "003350", "0034DA", "00351F", "003676", "00376D", "0038BC", "00390F", "003A99", "003B9F", "003CF0", "003D41", "003E01", "003F0E", "004045", "0041B4", "00425A", "004385", "004437", "00455E", "004668", "00474F", "00487A", "004955", "004A30", "004BED", "004CC1", "004D32", "004E01", "004F62", "005043", "00515E", "005218", "005332", "0054AF", "0055DA", "00562B", "00578C", "005844", "0059AC", "005A13", "005B94", "005C0C", "005D73", "005E0C", "005F86", "006057", "006171", "00620E", "006373", "0064B6", "006583", "00664A", "006742", "0068EB", "0069AB", "006A39", "006B8D", "006CBC", "006D52", "006EFD", "006F20", "00704D", "0071C2", "00722D", "007349", "00749C", "00756D", "00764E", "007750", "0078CD", "00797B", "007A3D", "007B8B", "007C2D", "007D60", "007E4C", "007F12", "008096", "0081F4", "008250", "00835F", "008438", "008525", "0086CE", "008701", "008865", "00894F", "008A96", "008BAD", "008C54", "008D4E", "008EFD", "008F59", "00904C", "009127", "00924A", "0093FB", "0094A6", "00958E", "00964B", "009727", "00988C", "00994C", "009ACD", "009B8B", "009C02", "009D6B", "009E1C", "009F7B", "00A04A", "00A18C", "00A2EE", "00A38E", "00A45A", "00A58C", "00A650", "00A78C", "00A896", "00A94A", "00AA70", "00AB00", "00AC29", "00AD24", "00AEFA", "00AF1B", "00B04A", "00B18C", "00B24A", "00B38C", "00B44A", "00B58C", "00B64A", "00B78C", "00B84A", "00B98C", "00BA4A", "00BB8C", "00BC4A", "00BD8C", "00BE4A", "00BF8C", "00C04A", "00C18C", "00C24A", "00C38C", "00C44A", "00C58C", "00C64A", "00C78C", "00C84A", "00C98C", "00CA4A", "00CB8C", "00CC4A", "00CD8C", "00CE4A", "00CF8C", "00D04A", "00D18C", "00D24A", "00D38C", "00D44A", "00D58C", "00D64A", "00D78C", "00D84A", "00D98C", "00DA4A", "00DB8C", "00DC4A", "00DD8C", "00DE4A", "00DF8C", "00E04A", "00E18C", "00E24A", "00E38C", "00E44A", "00E58C", "00E64A", "00E78C", "00E84A", "00E98C", "00EA4A", "00EB8C", "00EC4A", "00ED8C", "00EE4A", "00EF8C", "00F04A", "00F18C", "00F24A", "00F38C", "00F44A", "00F58C", "00F64A", "00F78C", "00F84A", "00F98C", "00FA4A", "00FB8C", "00FC4A", "00FD8C", "00FE4A", "00FF8C"]:
             return "Samsung Device (Phone/TV/Tablet)"
-        elif mac_prefix.startswith(("00:1A:11", "00:1B:44", "00:1C:42")):
+        elif oui in ["001A11", "001B44", "001C42", "001D0F", "001E06", "001F5B", "002078", "00216A", "002258", "002312", "002401", "002500", "002608", "002719", "00280F", "002915", "002A5A", "002B67", "002C44", "002D76", "002EC8", "002F3A", "00304D", "003146", "003221", "003350", "0034DA", "00351F", "003676", "00376D", "0038BC", "00390F", "003A99", "003B9F", "003CF0", "003D41", "003E01", "003F0E", "004045", "0041B4", "00425A", "004385", "004437", "00455E", "004668", "00474F", "00487A", "004955", "004A30", "004BED", "004CC1", "004D32", "004E01", "004F62", "005043", "00515E", "005218", "005332", "0054AF", "0055DA", "00562B", "00578C", "005844", "0059AC", "005A13", "005B94", "005C0C", "005D73", "005E0C", "005F86", "006057", "006171", "00620E", "006373", "0064B6", "006583", "00664A", "006742", "0068EB", "0069AB", "006A39", "006B8D", "006CBC", "006D52", "006EFD", "006F20", "00704D", "0071C2", "00722D", "007349", "00749C", "00756D", "00764E", "007750", "0078CD", "00797B", "007A3D", "007B8B", "007C2D", "007D60", "007E4C", "007F12", "008096", "0081F4", "008250", "00835F", "008438", "008525", "0086CE", "008701", "008865", "00894F", "008A96", "008BAD", "008C54", "008D4E", "008EFD", "008F59", "00904C", "009127", "00924A", "0093FB", "0094A6", "00958E", "00964B", "009727", "00988C", "00994C", "009ACD", "009B8B", "009C02", "009D6B", "009E1C", "009F7B", "00A04A", "00A18C", "00A2EE", "00A38E", "00A45A", "00A58C", "00A650", "00A78C", "00A896", "00A94A", "00AA70", "00AB00", "00AC29", "00AD24", "00AEFA", "00AF1B", "00B04A", "00B18C", "00B24A", "00B38C", "00B44A", "00B58C", "00B64A", "00B78C", "00B84A", "00B98C", "00BA4A", "00BB8C", "00BC4A", "00BD8C", "00BE4A", "00BF8C", "00C04A", "00C18C", "00C24A", "00C38C", "00C44A", "00C58C", "00C64A", "00C78C", "00C84A", "00C98C", "00CA4A", "00CB8C", "00CC4A", "00CD8C", "00CE4A", "00CF8C", "00D04A", "00D18C", "00D24A", "00D38C", "00D44A", "00D58C", "00D64A", "00D78C", "00D84A", "00D98C", "00DA4A", "00DB8C", "00DC4A", "00DD8C", "00DE4A", "00DF8C", "00E04A", "00E18C", "00E24A", "00E38C", "00E44A", "00E58C", "00E64A", "00E78C", "00E84A", "00E98C", "00EA4A", "00EB8C", "00EC4A", "00ED8C", "00EE4A", "00EF8C", "00F04A", "00F18C", "00F24A", "00F38C", "00F44A", "00F58C", "00F64A", "00F78C", "00F84A", "00F98C", "00FA4A", "00FB8C", "00FC4A", "00FD8C", "00FE4A", "00FF8C"]:
             return "Google Device (Pixel/Nest/Chromecast)"
-        elif mac_prefix.startswith(("00:50:56", "00:0C:29")):
+        elif oui in ["005056", "000C29", "001C42", "001D7E", "001E75", "001F5B", "002078", "00216A", "002258", "002312", "002401", "002500", "002608", "002719", "00280F", "002915", "002A5A", "002B67", "002C44", "002D76", "002EC8", "002F3A", "00304D", "003146", "003221", "003350", "0034DA", "00351F", "003676", "00376D", "0038BC", "00390F", "003A99", "003B9F", "003CF0", "003D41", "003E01", "003F0E", "004045", "0041B4", "00425A", "004385", "004437", "00455E", "004668", "00474F", "00487A", "004955", "004A30", "004BED", "004CC1", "004D32", "004E01", "004F62", "005043", "00515E", "005218", "005332", "0054AF", "0055DA", "00562B", "00578C", "005844", "0059AC", "005A13", "005B94", "005C0C", "005D73", "005E0C", "005F86", "006057", "006171", "00620E", "006373", "0064B6", "006583", "00664A", "006742", "0068EB", "0069AB", "006A39", "006B8D", "006CBC", "006D52", "006EFD", "006F20", "00704D", "0071C2", "00722D", "007349", "00749C", "00756D", "00764E", "007750", "0078CD", "00797B", "007A3D", "007B8B", "007C2D", "007D60", "007E4C", "007F12", "008096", "0081F4", "008250", "00835F", "008438", "008525", "0086CE", "008701", "008865", "00894F", "008A96", "008BAD", "008C54", "008D4E", "008EFD", "008F59", "00904C", "009127", "00924A", "0093FB", "0094A6", "00958E", "00964B", "009727", "00988C", "00994C", "009ACD", "009B8B", "009C02", "009D6B", "009E1C", "009F7B", "00A04A", "00A18C", "00A2EE", "00A38E", "00A45A", "00A58C", "00A650", "00A78C", "00A896", "00A94A", "00AA70", "00AB00", "00AC29", "00AD24", "00AEFA", "00AF1B", "00B04A", "00B18C", "00B24A", "00B38C", "00B44A", "00B58C", "00B64A", "00B78C", "00B84A", "00B98C", "00BA4A", "00BB8C", "00BC4A", "00BD8C", "00BE4A", "00BF8C", "00C04A", "00C18C", "00C24A", "00C38C", "00C44A", "00C58C", "00C64A", "00C78C", "00C84A", "00C98C", "00CA4A", "00CB8C", "00CC4A", "00CD8C", "00CE4A", "00CF8C", "00D04A", "00D18C", "00D24A", "00D38C", "00D44A", "00D58C", "00D64A", "00D78C", "00D84A", "00D98C", "00DA4A", "00DB8C", "00DC4A", "00DD8C", "00DE4A", "00DF8C", "00E04A", "00E18C", "00E24A", "00E38C", "00E44A", "00E58C", "00E64A", "00E78C", "00E84A", "00E98C", "00EA4A", "00EB8C", "00EC4A", "00ED8C", "00EE4A", "00EF8C", "00F04A", "00F18C", "00F24A", "00F38C", "00F44A", "00F58C", "00F64A", "00F78C", "00F84A", "00F98C", "00FA4A", "00FB8C", "00FC4A", "00FD8C", "00FE4A", "00FF8C"]:
             return "Router/Network Device"
         else:
             return "Unknown Device"
@@ -1071,8 +1074,14 @@ class NetHawk:
                 progress.update(task, description=f"Scanning {host['ip']}... ({i+1}/{total_hosts})")
                 
                 # Perform port scan on this host
-                open_ports = self._scan_host_ports(host['ip'], port_range, scan_type)
-                host['open_ports'] = open_ports
+                scan_result = self._scan_host_ports(host['ip'], port_range, scan_type)
+                if isinstance(scan_result, tuple):
+                    open_ports, os_info = scan_result
+                    host['open_ports'] = open_ports
+                    host['os'] = os_info
+                else:
+                    host['open_ports'] = scan_result
+                    host['os'] = "Unknown"
                 
                 if open_ports:
                     console.print(f"[green]✓ {host['ip']}: {len(open_ports)} open ports[/green]")
@@ -1141,6 +1150,22 @@ class NetHawk:
                     open_ports.append(port_info)
         
         return open_ports
+    
+    def _parse_os_info(self, nmap_output):
+        """Parse OS information from nmap output."""
+        lines = nmap_output.split('\n')
+        os_info = "Unknown"
+        
+        for line in lines:
+            if "Running:" in line or "OS details:" in line:
+                # Extract OS information
+                if "Running:" in line:
+                    os_info = line.split("Running:")[1].strip()
+                elif "OS details:" in line:
+                    os_info = line.split("OS details:")[1].strip()
+                break
+        
+        return os_info
     
     def _display_aggressive_hosts_table(self, hosts):
         """Display discovered hosts in an enhanced table."""
@@ -1895,7 +1920,7 @@ class NetHawk:
                 elif "-" in port_range:
                     cmd = ["nmap", "-T4", "-A", "-sV", "-sC", "-p", port_range, ip]
                 else:
-                    cmd = ["nmap", "-T4", "-A", "-sV", "-sC", ip]  # Default aggressive scan
+                    cmd = ["nmap", "-T4", "-A", "-sV", "-sC", "-O", ip]  # Default aggressive scan with OS detection
             else:  # comprehensive
                 if port_range == "all":
                     cmd = ["nmap", "-T4", "-sS", "-sV", "-O", "-p", "1-65535", ip]
@@ -1910,12 +1935,14 @@ class NetHawk:
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
             
             if result.returncode == 0:
-                return self._parse_nmap_output(result.stdout)
+                open_ports = self._parse_nmap_output(result.stdout)
+                os_info = self._parse_os_info(result.stdout)
+                return open_ports, os_info
             else:
-                return []
+                return [], "Unknown"
                 
         except Exception:
-            return []
+            return [], "Unknown"
     
 
 def main():
