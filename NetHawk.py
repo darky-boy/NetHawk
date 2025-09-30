@@ -373,7 +373,7 @@ class NetHawk:
         console.print(f"\n[yellow]🔍 Diagnosing monitor mode issues for {iface}...[/yellow]")
         
         # Check if running as root
-        if os.geteuid() != 0:
+        if hasattr(os, "geteuid") and os.geteuid() != 0:
             console.print(f"[red]❌ Not running as root![/red]")
             console.print(f"[blue]Solution: Run with sudo python3 NetHawk.py[/blue]")
             return False
@@ -476,7 +476,7 @@ class NetHawk:
             cmd.append(monitor_iface)
             
             # Start the scan process
-            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, text=True)
             
             # Real-time network discovery
             console.print(f"[blue]🔍 Scanning for networks...[/blue]")
@@ -550,17 +550,24 @@ class NetHawk:
     def _parse_live_networks(self, csv_file):
         """Parse live networks from CSV file and return count."""
         try:
-            with open(csv_file, 'r') as f:
-                lines = f.readlines()
-            
-            # Count networks (skip header and empty lines)
-            count = 0
-            for line in lines:
-                if line.strip() and not line.startswith('BSSID'):
-                    count += 1
-            
-            return count
-        except:
+            with open(csv_file, newline='', encoding='utf-8', errors='ignore') as f:
+                reader = csv.reader(f)
+                count = 0
+                section = None
+                for row in reader:
+                    if not row:
+                        continue
+                    # header row detection
+                    if 'BSSID' in row[0]:
+                        section = 'AP'
+                        continue
+                    if 'Station MAC' in row[0]:
+                        section = 'CLIENT'
+                        continue
+                    if section == 'AP' and len(row) > 0 and row[0] and re.match(r'([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}', row[0]):
+                        count += 1
+                return count
+        except Exception:
             return 0
 
     def _parse_aggressive_passive_results(self, output_file):
@@ -720,44 +727,29 @@ class NetHawk:
         # Auto-detect current network
         console.print(f"[blue]Auto-detecting your current network...[/blue]")
         target = self._get_current_network()
-        
-        # Debug: Show what target was detected
         console.print(f"[blue]Debug: Detected target = '{target}'[/blue]")
-        
-        if target:
-            console.print(f"[green]✓ Detected network: {target}[/green]")
-            if not Confirm.ask(f"Scan detected network {target}?"):
-                # Manual input if user doesn't want detected network
-                while True:
-                    target = Prompt.ask("Enter target network (e.g., 192.168.1.0/24)")
-                    
-                    # Basic validation
-                    if not target or target.strip() == '':
-                        console.print("[red]Please enter a network[/red]")
-                        continue
-                        
-                    # Check for common invalid values
-                    if target.lower() in ['mac', 'none', 'null', 'undefined']:
-                        console.print(f"[red]Invalid network format: '{target}'[/red]")
-                        console.print(f"[blue]Please enter a valid network like 192.168.1.0/24[/blue]")
-                        continue
-                    
-                    # Validate network format
-                    if not ('/' in target and '.' in target):
-                        console.print(f"[red]Invalid network format: '{target}'[/red]")
-                        console.print(f"[blue]Please enter a valid network like 192.168.1.0/24[/blue]")
-                        continue
-                    
-                    try:
-                        # Try to create network object
-                        network = ipaddress.IPv4Network(target, strict=False)
-                        break
-                    except ValueError as e:
-                        console.print(f"[red]Invalid network format: {e}[/red]")
-                        console.print(f"[blue]Please enter a valid network like 192.168.1.0/24[/blue]")
-                        continue
+
+        # Validate detected target
+        valid_network = None
+        if isinstance(target, str):
+            try:
+                # try to parse; don't enforce strict host/network alignment
+                ipaddress.IPv4Network(target, strict=False)
+                valid_network = target
+            except Exception:
+                valid_network = None
+
+        if valid_network:
+            console.print(f"[green]✓ Detected network: {valid_network}[/green]")
+            if not Confirm.ask(f"Scan detected network {valid_network}?"):
+                target = None  # force manual entry flow below
+            else:
+                target = valid_network
         else:
-            console.print(f"[yellow]Could not auto-detect network. Please enter manually:[/yellow]")
+            target = None  # trigger manual entry flow
+        
+        # Manual input if user doesn't want detected network or auto-detection failed
+        if not target:
             while True:
                 target = Prompt.ask("Enter target network (e.g., 192.168.1.0/24)")
                 
@@ -787,8 +779,12 @@ class NetHawk:
                     console.print(f"[blue]Please enter a valid network like 192.168.1.0/24[/blue]")
                     continue
         
-        # Create network object
-        network = ipaddress.IPv4Network(target, strict=False)
+        # Create network object with final validation
+        try:
+            network = ipaddress.IPv4Network(target, strict=False)
+        except Exception as e:
+            console.print(f"[red]Invalid network format: {e}[/red]")
+            return
         
         try:
             console.print(f"[blue]AGGRESSIVE scanning network: {network}[/blue]")
@@ -1803,15 +1799,12 @@ class NetHawk:
             console.print(f"[red]Error generating comprehensive report: {e}[/red]")
     
     def _load_config(self):
-        """Load configuration from file."""
-        try:
-            if os.path.exists("config.json"):
-                with open("config.json", 'r') as f:
-                    return json.load(f)
-        except Exception:
-            pass
-        
+        """Load configuration (placeholder). Returns dict of defaults."""
+        # TODO: read a JSON/YAML config file if you need persistent settings
         return {
+            "default_scan_timeout": 300,
+            "default_port_range": "top1000",
+            "default_scan_type": "aggressive",
             "default_interface": "wlan0",
             "scan_duration": 60,
             "output_format": "txt"
@@ -1858,15 +1851,16 @@ class NetHawk:
         except Exception as e:
             console.print(f"\n[red]Unexpected error: {e}[/red]")
 
-    def _ping_host(self, ip):
-        """Ping a host to check if it's alive."""
+    def _ping_host(self, ip, count=1, timeout=1):
+        """Simple ping wrapper used as gateway reachability test."""
         try:
-            result = subprocess.run(["ping", "-c", "1", "-W", "1", ip], 
-                                  capture_output=True, timeout=3)
+            # Use system ping (linux)
+            result = subprocess.run(["ping", "-c", str(count), "-W", str(timeout), ip],
+                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             return result.returncode == 0
-            
         except Exception:
-            return False
+            # fallback to aggressive ping
+            return self._aggressive_ping_host(ip)
 
     def _scan_host_ports(self, ip, port_range, scan_type):
         """Scan ports on a single host."""
