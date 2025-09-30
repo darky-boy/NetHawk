@@ -2574,10 +2574,11 @@ class NetHawk:
                 answer_lines_found += 1
                 console.print(f"[cyan]DEBUG: Processing answer line {answer_lines_found} for {query_type}: {line}[/cyan]")
                 
-                # Parse A records - look for lines like "google.com. 13 IN A 142.250.207.142"
+                # Parse A records - look for lines like "google.com. 161 IN A 142.250.71.110"
                 if query_type == "A" and "IN A" in line:
                     console.print(f"[yellow]DEBUG A: Found A record line: {line}[/yellow]")
-                    parts = line.split()
+                    # Split by whitespace and filter out empty strings
+                    parts = [part for part in line.split() if part]
                     console.print(f"[yellow]DEBUG A: Parts: {parts}[/yellow]")
                     if len(parts) >= 4 and parts[-2] == "A":
                         ip = parts[-1]
