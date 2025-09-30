@@ -813,17 +813,27 @@ class NetHawk:
             console.print(f"\n[green]✓ Found {len(hosts)} active hosts![/green]")
             self._display_aggressive_hosts_table(hosts)
             
-            # Port scan discovered hosts
+            # Port scan discovered hosts with speed options
             if Confirm.ask("Perform AGGRESSIVE port scanning on discovered hosts?"):
-                console.print(f"\n[bold red]🔥 ULTIMATE AGGRESSIVE SCAN MODE![/bold red]")
-                console.print(f"[yellow]This will scan ALL 65,535 TCP + UDP ports on EVERY host![/yellow]")
-                console.print(f"[red]⚠️ WARNING: This will take 30-60 minutes but will get MAXIMUM info![/red]")
+                console.print(f"\n[bold green]🚀 SCAN MODE SELECTION[/bold green]")
+                console.print(f"[cyan]1. TURBO SCAN (30 seconds per host) - Fastest[/cyan]")
+                console.print(f"[cyan]2. FAST AGGRESSIVE (2-3 minutes per host) - Balanced[/cyan]")
+                console.print(f"[cyan]3. ULTIMATE AGGRESSIVE (10-15 minutes per host) - Most thorough[/cyan]")
                 
-                if Confirm.ask("Continue with ULTIMATE AGGRESSIVE scan?"):
-                    self._force_scan_all_hosts(hosts, "all", "aggressive")
+                scan_choice = self.validate_input(
+                    "[bold]Select scan mode (1-3):[/bold] ",
+                    ["1", "2", "3"]
+                )
+                
+                if scan_choice == "1":
+                    console.print(f"[green]✓ TURBO SCAN selected - Maximum speed![/green]")
+                    self._turbo_scan_all_hosts(hosts)
+                elif scan_choice == "2":
+                    console.print(f"[green]✓ FAST AGGRESSIVE SCAN selected - Balanced speed/thoroughness![/green]")
+                    self._aggressive_port_scan_with_progress(hosts, "top2000", "aggressive")
                 else:
-                    console.print(f"[blue]Using standard aggressive scan...[/blue]")
-                    self._aggressive_port_scan_with_progress(hosts, port_range, scan_type)
+                    console.print(f"[green]✓ ULTIMATE AGGRESSIVE SCAN selected - Maximum thoroughness![/green]")
+                    self._force_scan_all_hosts(hosts, "all", "aggressive")
             
             # Display detailed results in terminal (no file saving)
             console.print(f"\n[bold green]📊 ACTIVE SCAN RESULTS SUMMARY[/bold green]")
@@ -2102,6 +2112,67 @@ class NetHawk:
             console.print(f"[yellow]⚠️  Could not scan for clients: {e}[/yellow]")
             return []
     
+    def _turbo_scan_all_hosts(self, hosts):
+        """TURBO SCAN - Maximum speed scanning (30 seconds per host)."""
+        console.print(f"[red]🚀 TURBO SCAN MODE - MAXIMUM SPEED![/red]")
+        console.print(f"[yellow]⚡ Scanning {len(hosts)} hosts in ~{len(hosts) * 0.5} minutes![/yellow]")
+        
+        for i, host in enumerate(hosts, 1):
+            if host.get('status') == 'up':
+                console.print(f"\n[bold blue]⚡ TURBO SCANNING HOST {i}/{len(hosts)}: {host['ip']}[/bold blue]")
+                
+                # TURBO SCAN: Only most common ports
+                turbo_cmd = [
+                    "nmap", "-Pn", "-sS", "-sV", "-O",
+                    "--top-ports", "100",  # Only top 100 ports
+                    "-T5", "--max-retries", "1",
+                    "--host-timeout", "30s",  # 30 second timeout
+                    host['ip']
+                ]
+                
+                try:
+                    result = subprocess.run(turbo_cmd, capture_output=True, text=True, timeout=60)
+                    raw = result.stdout if result.returncode == 0 else result.stdout + "\n" + result.stderr
+                    
+                    # Quick parsing
+                    open_ports = []
+                    services = []
+                    for line in raw.splitlines():
+                        line = line.strip()
+                        m = re.match(r"^(\d+)\/(tcp|udp)\s+(open|open\|filtered)\s+([^\s]+)(\s+(.*))?$", line)
+                        if m and m.group(3) in ["open", "open|filtered"]:
+                            open_ports.append({
+                                "port": m.group(1),
+                                "protocol": m.group(2),
+                                "service": m.group(4),
+                                "banner": m.group(6) or "",
+                                "state": m.group(3)
+                            })
+                            services.append(m.group(4))
+                    
+                    # Update host with results
+                    host['open_ports'] = open_ports
+                    host['services'] = services
+                    host['os'] = "Unknown"  # Skip OS detection for speed
+                    host['device'] = "Unknown"  # Skip device detection for speed
+                    
+                    # Show quick results
+                    if open_ports:
+                        console.print(f"[green]✓ Found {len(open_ports)} open ports![/green]")
+                        for port in open_ports[:3]:  # Show first 3 ports
+                            console.print(f"  [blue]Port {port['port']}/{port['protocol']}: {port['service']}[/blue]")
+                        if len(open_ports) > 3:
+                            console.print(f"  [blue]... and {len(open_ports)-3} more ports[/blue]")
+                    else:
+                        console.print(f"[yellow]⚠ No open ports found[/yellow]")
+                    
+                    console.print(f"[dim]Host {i} turbo scan completed in ~30s[/dim]")
+                    
+                except Exception as e:
+                    console.print(f"[red]Error turbo scanning {host['ip']}: {e}[/red]")
+        
+        console.print(f"\n[bold green]⚡ TURBO SCAN COMPLETED![/bold green]")
+    
     def vulnerability_assessment(self):
         """Perform vulnerability assessment on discovered hosts."""
         console.print("[bold red]Vulnerability Assessment[/bold red]")
@@ -2628,47 +2699,45 @@ class NetHawk:
             # ULTIMATE AGGRESSIVE SCAN - Brute force everything
             cmd = ["nmap"]
             
-            # Check if we should use a more reasonable scan first
+            # FAST AGGRESSIVE SCAN - Optimized for speed while being thorough
             if scan_type == "aggressive" and port_range == "all":
-                console.print(f"[blue]Using ULTIMATE AGGRESSIVE SCAN (all 65,535 ports)[/blue]")
-                # AGGRESSIVE MODE: Bypass all protections
+                console.print(f"[blue]Using FAST AGGRESSIVE SCAN (top 2000 ports + common UDP)[/blue]")
+                # FAST AGGRESSIVE: Much faster but still comprehensive
                 cmd.extend([
                     "-Pn",                    # Don't ping (scan even if host drops ICMP)
-                    "-p-",                    # ALL 65,535 TCP ports (brute force)
+                    "--top-ports", "2000",    # Top 2000 TCP ports (covers 99% of services)
                     "-sS",                    # SYN scan (requires root)
-                    "-sU",                    # UDP scan (IoT/mobile devices)
+                    "-sU", "--top-ports", "200",  # Top 200 UDP ports (common services)
                     "-sV",                    # Service version detection
                     "-O",                     # OS fingerprinting
-                    "--version-intensity", "9",  # MAX effort for service detection
-                    "--script", "default,vuln", # NSE scripts for extra info
+                    "--version-intensity", "5",  # Balanced effort for service detection
+                    "--script", "default",   # Basic NSE scripts (faster than vuln)
                     "-T5",                    # VERY aggressive timing
-                    "--max-retries", "5",     # Push through dropped packets
-                    "--host-timeout", "300s", # Long timeout for stubborn devices
-                    "--min-rate", "1000"      # Minimum packet rate
+                    "--max-retries", "2",     # Fewer retries for speed
+                    "--host-timeout", "60s",  # Much shorter timeout
+                    "--min-rate", "2000"     # Higher packet rate for speed
                 ])
             else:
-                console.print(f"[blue]Using SMART AGGRESSIVE SCAN (top 1000 ports + common UDP)[/blue]")
-                # SMART AGGRESSIVE: More reasonable but still thorough
+                console.print(f"[blue]Using SMART FAST SCAN (top 1000 ports)[/blue]")
+                # SMART FAST: Quick but effective
                 cmd.extend([
                     "-Pn",                    # Don't ping
                     "--top-ports", "1000",    # Top 1000 TCP ports
                     "-sS",                    # SYN scan
-                    "-sU", "--top-ports", "100",  # Top 100 UDP ports
                     "-sV",                    # Service version detection
                     "-O",                     # OS fingerprinting
-                    "--version-intensity", "7",  # High effort for service detection
-                    "--script", "default",   # Basic NSE scripts
-                    "-T4",                    # Aggressive timing
-                    "--max-retries", "3",     # Reasonable retries
-                    "--host-timeout", "180s"  # Reasonable timeout
+                    "--version-intensity", "3",  # Lower effort for speed
+                    "-T5",                    # Very aggressive timing
+                    "--max-retries", "1",     # Minimal retries
+                    "--host-timeout", "30s"   # Quick timeout
                 ])
 
             cmd.append(ip)
 
-            # Run nmap (allow long timeout for aggressive scan)
-            console.print(f"[red]🔥 ULTIMATE AGGRESSIVE SCAN on {ip} (scanning ALL ports + UDP + scripts)...[/red]")
-            console.print(f"[yellow]⚠️ This will be SLOW but THOROUGH - scanning 65,535 TCP + UDP ports![/yellow]")
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=1200)  # 20 minutes timeout
+            # Run nmap with optimized timeout
+            console.print(f"[red]🔥 FAST AGGRESSIVE SCAN on {ip} (scanning top ports + UDP + scripts)...[/red]")
+            console.print(f"[yellow]⚠️ This will be FAST but THOROUGH - scanning top 2000 TCP + 200 UDP ports![/yellow]")
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)  # 5 minutes timeout
 
             raw = result.stdout if result.returncode == 0 else result.stdout + "\n" + result.stderr
             
