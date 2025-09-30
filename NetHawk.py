@@ -524,25 +524,42 @@ class NetHawk:
             process.wait()
             console.print(f"[green]✓ Scan completed! Found {networks_found} networks[/green]")
             
-            # Parse CSV results
+            # Parse and display results in terminal (no file saving)
             console.print(f"[blue]Parsing scan results...[/blue]")
-            self._parse_aggressive_passive_results(output_file)
+            aps, clients = self._parse_aggressive_passive_results_terminal(output_file)
             
-            # Show summary
-            console.print(f"[green]✓ Passive scan completed![/green]")
-            console.print(f"[blue]Results saved to: {output_file}*[/blue]")
-            console.print(f"[yellow]Check the CSV files for detailed results[/yellow]")
+            # Show detailed results in terminal
+            console.print(f"\n[bold green]📊 PASSIVE SCAN RESULTS SUMMARY[/bold green]")
+            console.print(f"[blue]Scan Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/blue]")
+            console.print(f"[green]Access Points Found: {len(aps)}[/green]")
+            console.print(f"[green]Clients Found: {len(clients)}[/green]")
             
-            # Show session storage message
-            console.print(f"\n[bold green]📁 Scan Results Stored in Session Files:[/bold green]")
-            console.print(f"[blue]Session Path: {self.session_path}[/blue]")
-            console.print(f"[blue]Logs Directory: {self.logs_path}[/blue]")
-            console.print(f"[yellow]Files created:[/yellow]")
-            console.print(f"[blue]  - {output_file}-01.csv (Access Points)[/blue]")
-            console.print(f"[blue]  - {output_file}-02.csv (Clients)[/blue]")
-            console.print(f"[blue]  - {output_file}-01.kismet.csv (Kismet format)[/blue]")
-            console.print(f"[blue]  - {output_file}-01.log.csv (Log format)[/blue]")
-            console.print(f"[green]✓ All scan data is automatically saved to your session![/green]")
+            # Display Access Points
+            if aps:
+                console.print(f"\n[bold cyan]ACCESS POINTS:[/bold cyan]")
+                for i, ap in enumerate(aps, 1):
+                    console.print(f"\n[bold]AP {i}:[/bold]")
+                    console.print(f"  [green]BSSID:[/green] {ap['BSSID']}")
+                    console.print(f"  [green]ESSID:[/green] {ap['ESSID']}")
+                    console.print(f"  [green]Channel:[/green] {ap['Channel']}")
+                    console.print(f"  [green]Power:[/green] {ap['Power']}")
+                    console.print(f"  [green]Privacy:[/green] {ap['Privacy']}")
+                    console.print(f"  [green]WPS:[/green] {ap['WPS']}")
+                    console.print(f"  [green]Beacons:[/green] {ap['Beacons']}")
+            
+            # Display Clients
+            if clients:
+                console.print(f"\n[bold cyan]CLIENTS:[/bold cyan]")
+                for i, client in enumerate(clients, 1):
+                    console.print(f"\n[bold]Client {i}:[/bold]")
+                    console.print(f"  [green]Station MAC:[/green] {client['Station']}")
+                    console.print(f"  [green]Power:[/green] {client['Power']}")
+                    console.print(f"  [green]Connected to:[/green] {client['BSSID']}")
+                    if client['Probed']:
+                        console.print(f"  [green]Probed ESSIDs:[/green] {client['Probed']}")
+            
+            console.print(f"\n[bold green]✅ Passive scan completed successfully![/bold green]")
+            console.print(f"[blue]Results displayed above - no files saved[/blue]")
             
         except KeyboardInterrupt:
             console.print("\n[yellow]Scan stopped by user.[/yellow]")
@@ -575,21 +592,12 @@ class NetHawk:
         except Exception:
             return 0
 
-    def _parse_aggressive_passive_results(self, output_file):
-        """Parse airodump-ng CSV results with enhanced data."""
+    def _parse_aggressive_passive_results_terminal(self, output_file):
+        """Parse airodump-ng CSV results for terminal display only."""
         csv_file = f"{output_file}-01.csv"
         if not os.path.exists(csv_file):
             console.print("[red]No CSV results found.[/red]")
-            console.print(f"[yellow]Looking for: {csv_file}[/yellow]")
-            console.print(f"[blue]Available files in {self.logs_path}:[/blue]")
-            try:
-                files = os.listdir(self.logs_path)
-                for f in files:
-                    if f.startswith("aggressive_passive"):
-                        console.print(f"  - {f}")
-            except:
-                pass
-            return
+            return [], []
         
         try:
             aps = []
@@ -640,24 +648,11 @@ class NetHawk:
                         except IndexError:
                             continue
             
-            # Display results
-            console.print(f"[green]Found {len(aps)} access points and {len(clients)} clients[/green]")
-            
-            if aps:
-                self._display_aggressive_ap_table(aps)
-            else:
-                console.print("[yellow]No access points found. Try scanning longer or check if WiFi is active.[/yellow]")
-            
-            if clients:
-                self._display_aggressive_client_table(clients)
-            else:
-                console.print("[yellow]No clients found. This is normal if no devices are connected.[/yellow]")
-            
-            # Save to JSON
-            self._save_aggressive_passive_results(aps, clients, output_file)
+            return aps, clients
             
         except Exception as e:
             console.print(f"[red]Error parsing results: {e}[/red]")
+            return [], []
     
     def _display_aggressive_ap_table(self, aps):
         """Display access points in an enhanced table."""
@@ -825,30 +820,32 @@ class NetHawk:
                     console.print(f"[yellow]This may take 5-15 minutes depending on number of hosts[/yellow]")
                     self._aggressive_port_scan_with_progress(hosts, port_range, scan_type)
                 
-                # Save results - use network object directly to avoid 'mac' issue
-                network_string = str(network)
-                console.print(f"[blue]Debug: About to save with network = '{network_string}'[/blue]")
-                self._save_aggressive_active_results(hosts, network_string)
+                # Display detailed results in terminal (no file saving)
+                console.print(f"\n[bold green]📊 ACTIVE SCAN RESULTS SUMMARY[/bold green]")
+                console.print(f"[blue]Network Scanned: {network}[/blue]")
+                console.print(f"[green]Total Hosts Found: {len(hosts)}[/green]")
+                console.print(f"[yellow]Scan Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/yellow]")
                 
-                # Show where results are stored
-                console.print(f"\n[bold yellow]📂 Active Scan Results Location:[/bold yellow]")
-                console.print(f"[blue]Session: {self.session_path}[/blue]")
-                console.print(f"[blue]Logs: {self.logs_path}[/blue]")
-                console.print(f"[green]Look for files starting with 'aggressive_active_'[/green]")
-                
-                # List files in logs directory
-                try:
-                    if os.path.exists(self.logs_path):
-                        files = os.listdir(self.logs_path)
-                        active_files = [f for f in files if f.startswith('aggressive_active_')]
-                        if active_files:
-                            console.print(f"[green]✓ Found active scan files:[/green]")
-                            for file in active_files:
-                                console.print(f"[blue]  - {file}[/blue]")
+                # Show detailed host information
+                if hosts:
+                    console.print(f"\n[bold cyan]DETAILED HOST INFORMATION:[/bold cyan]")
+                    for i, host in enumerate(hosts, 1):
+                        console.print(f"\n[bold]Host {i}:[/bold]")
+                        console.print(f"  [green]IP Address:[/green] {host['ip']}")
+                        console.print(f"  [green]Status:[/green] {host['status']}")
+                        if host.get('mac') and host['mac'] != 'Unknown':
+                            console.print(f"  [green]MAC Address:[/green] {host['mac']}")
+                        if host.get('open_ports'):
+                            console.print(f"  [green]Open Ports:[/green] {len(host['open_ports'])} ports")
+                            for port in host['open_ports'][:5]:  # Show first 5 ports
+                                console.print(f"    - Port {port['port']}/{port['protocol']}: {port['service']}")
+                            if len(host['open_ports']) > 5:
+                                console.print(f"    - ... and {len(host['open_ports'])-5} more ports")
                         else:
-                            console.print(f"[yellow]⚠ No active scan files found in logs directory[/yellow]")
-                except Exception as e:
-                    console.print(f"[red]Error listing files: {e}[/red]")
+                            console.print(f"  [yellow]No open ports found[/yellow]")
+                
+                console.print(f"\n[bold green]✅ Active scan completed successfully![/bold green]")
+                console.print(f"[blue]Results displayed above - no files saved[/blue]")
             else:
                 console.print("[yellow]No active hosts found.[/yellow]")
                 console.print("[blue]Try scanning a different network or check your network connection[/blue]")
