@@ -177,7 +177,7 @@ class NetHawk:
             try:
                 choice = Prompt.ask(prompt)
                 if choice in choices:
-                return choice
+                    return choice
                 else:
                     console.print("[red]Please enter a valid option.[/red]")
             except KeyboardInterrupt:
