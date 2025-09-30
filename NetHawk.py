@@ -2565,10 +2565,14 @@ class NetHawk:
                 
                 # Parse A records - look for lines like "google.com. 143 IN A 142.250.207.142"
                 if query_type == "A" and "IN A" in line:
+                    console.print(f"[yellow]DEBUG A: Found A record line: {line}[/yellow]")
                     parts = line.split()
+                    console.print(f"[yellow]DEBUG A: Parts: {parts}[/yellow]")
                     if len(parts) >= 4 and parts[-2] == "A":
                         ip = parts[-1]
+                        console.print(f"[yellow]DEBUG A: IP: {ip}[/yellow]")
                         if ip.replace('.', '').isdigit():
+                            console.print(f"[yellow]DEBUG A: Adding A record: {domain} -> {ip}[/yellow]")
                             dns_info.append({
                                 "type": "A Record",
                                 "value": f"{domain} -> {ip}",
