@@ -696,28 +696,6 @@ class NetHawk:
         
         console.print(table)
     
-    def _save_aggressive_passive_results(self, aps, clients, output_file):
-        """Save aggressive passive scan results to JSON."""
-        results = {
-            "timestamp": datetime.now().isoformat(),
-            "scan_type": "aggressive_passive",
-            "access_points": aps,
-            "clients": clients,
-            "summary": {
-                "total_aps": len(aps),
-                "total_clients": len(clients),
-                "wps_enabled": len([ap for ap in aps if ap["WPS"] == "WPS"]),
-                "hidden_networks": len([ap for ap in aps if ap["ESSID"] == "Hidden"])
-            }
-        }
-        
-        json_file = f"{output_file}.json"
-        try:
-            with open(json_file, 'w') as f:
-                json.dump(results, f, indent=2)
-            console.print(f"[green]✓ AGGRESSIVE results saved to: {json_file}[/green]")
-        except Exception as e:
-            console.print(f"[red]Error saving results: {e}[/red]")
     
     def aggressive_active_scan(self):
         """AGGRESSIVE active network scanning with port scanning and service detection."""
@@ -1219,51 +1197,6 @@ class NetHawk:
         console.print(f"[green]Selected network: {selected}[/green]")
         return selected
 
-    def _save_aggressive_active_results(self, hosts, target):
-        """Save aggressive active scan results to JSON."""
-        # Debug: Show exactly what target we're getting
-        console.print(f"[blue]Debug: Save function received target = '{target}'[/blue]")
-        
-        # Validate target to prevent 'mac' error
-        if target == 'mac' or target is None or not target:
-            target = "Unknown Network"
-            console.print(f"[yellow]Warning: Invalid target detected, using fallback[/yellow]")
-        
-        results = {
-            "timestamp": datetime.now().isoformat(),
-            "scan_type": "aggressive_active",
-            "target_network": target,
-            "hosts": hosts,
-            "summary": {
-                "total_hosts": len(hosts),
-                "hosts_with_ports": len([h for h in hosts if h["open_ports"]])
-            }
-        }
-        
-        output_file = os.path.join(self.logs_path, f"aggressive_active_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
-        
-        # Debug: Show paths
-        console.print(f"[blue]Debug: Session path: {self.session_path}[/blue]")
-        console.print(f"[blue]Debug: Logs path: {self.logs_path}[/blue]")
-        console.print(f"[blue]Debug: Output file: {output_file}[/blue]")
-        
-        try:
-            # Ensure directory exists
-            os.makedirs(self.logs_path, exist_ok=True)
-            
-            with open(output_file, 'w') as f:
-                json.dump(results, f, indent=2)
-            console.print(f"[green]✓ AGGRESSIVE results saved to: {output_file}[/green]")
-            
-            # Show session storage message
-            console.print(f"\n[bold green]📁 Scan Results Stored in Session Files:[/bold green]")
-            console.print(f"[blue]Session Path: {self.session_path}[/blue]")
-            console.print(f"[blue]Logs Directory: {self.logs_path}[/blue]")
-            console.print(f"[yellow]Files created:[/yellow]")
-            console.print(f"[blue]  - {os.path.basename(output_file)} (Active scan results)[/blue]")
-            console.print(f"[green]✓ All scan data is automatically saved to your session![/green]")
-        except Exception as e:
-            console.print(f"[red]Error saving results: {e}[/red]")
     
     def advanced_handshake_capture(self):
         """Advanced handshake capture with deauth attacks."""
@@ -1433,9 +1366,20 @@ class NetHawk:
                 vulnerabilities = self._parse_vulnerabilities(result.stdout)
                 
                 if vulnerabilities:
-                    console.print(f"\n[green]✓ Found {len(vulnerabilities)} vulnerabilities![/green]")
-                    self._display_vulnerabilities_table(vulnerabilities)
-                    self._save_vulnerabilities(vulnerabilities, target)
+                    console.print(f"\n[bold green]📊 VULNERABILITY ASSESSMENT RESULTS[/bold green]")
+                    console.print(f"[blue]Target: {target}[/blue]")
+                    console.print(f"[green]Vulnerabilities Found: {len(vulnerabilities)}[/green]")
+                    console.print(f"[yellow]Scan Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/yellow]")
+                    
+                    console.print(f"\n[bold cyan]DETAILED VULNERABILITIES:[/bold cyan]")
+                    for i, vuln in enumerate(vulnerabilities, 1):
+                        console.print(f"\n[bold]Vulnerability {i}:[/bold]")
+                        console.print(f"  [red]Title:[/red] {vuln['title']}")
+                        console.print(f"  [yellow]Severity:[/yellow] {vuln['severity']}")
+                        console.print(f"  [blue]Description:[/blue] {vuln['description'][:200]}...")
+                    
+                    console.print(f"\n[bold green]✅ Vulnerability assessment completed![/bold green]")
+                    console.print(f"[blue]Results displayed above - no files saved[/blue]")
                 else:
                     console.print("[yellow]No vulnerabilities found.[/yellow]")
                     console.print("[blue]Target appears to be secure or scan was inconclusive[/blue]")
@@ -1566,18 +1510,20 @@ class NetHawk:
                 result = type('obj', (object,), {'returncode': process.returncode, 'stdout': stdout, 'stderr': stderr})()
             
             if result.returncode == 0:
-                console.print(f"[green]✓ Web application scan completed![/green]")
-                console.print(f"[blue]Results saved to: {output_file}[/blue]")
+                console.print(f"\n[bold green]📊 WEB APPLICATION SCAN RESULTS[/bold green]")
+                console.print(f"[blue]Target: {target_url}[/blue]")
+                console.print(f"[yellow]Scan Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/yellow]")
                 
-                # Show partial results in terminal
+                # Show detailed results in terminal
                 if result.stdout:
-                    console.print(f"\n[yellow]Scan Results Preview:[/yellow]")
-                    lines = result.stdout.split('\n')[:10]  # Show first 10 lines
+                    console.print(f"\n[bold cyan]SCAN RESULTS:[/bold cyan]")
+                    lines = result.stdout.split('\n')
                     for line in lines:
                         if line.strip():
                             console.print(f"[blue]{line}[/blue]")
-                    if len(result.stdout.split('\n')) > 10:
-                        console.print(f"[blue]... and {len(result.stdout.split('\n')) - 10} more lines[/blue]")
+                
+                console.print(f"\n[bold green]✅ Web application scan completed![/bold green]")
+                console.print(f"[blue]Results displayed above - no files saved[/blue]")
             else:
                 console.print(f"[red]Web application scan failed: {result.stderr}[/red]")
                 console.print(f"[blue]Partial output: {result.stdout[:500]}...[/blue]")
@@ -1644,23 +1590,20 @@ class NetHawk:
                 result = type('obj', (object,), {'returncode': process.returncode, 'stdout': stdout, 'stderr': stderr})()
             
             if result.returncode == 0:
-                # Save results
-                output_file = os.path.join(self.logs_path, f"smb_enum_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
-                with open(output_file, 'w') as f:
-                    f.write(result.stdout)
+                console.print(f"\n[bold green]📊 SMB ENUMERATION RESULTS[/bold green]")
+                console.print(f"[blue]Target: {target}[/blue]")
+                console.print(f"[yellow]Scan Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/yellow]")
                 
-                console.print(f"[green]✓ SMB enumeration completed![/green]")
-                console.print(f"[blue]Results saved to: {output_file}[/blue]")
-                
-                # Show partial results in terminal
+                # Show detailed results in terminal
                 if result.stdout:
-                    console.print(f"\n[yellow]SMB Enumeration Results Preview:[/yellow]")
-                    lines = result.stdout.split('\n')[:15]  # Show first 15 lines
+                    console.print(f"\n[bold cyan]ENUMERATION RESULTS:[/bold cyan]")
+                    lines = result.stdout.split('\n')
                     for line in lines:
                         if line.strip():
                             console.print(f"[blue]{line}[/blue]")
-                    if len(result.stdout.split('\n')) > 15:
-                        console.print(f"[blue]... and {len(result.stdout.split('\n')) - 15} more lines[/blue]")
+                
+                console.print(f"\n[bold green]✅ SMB enumeration completed![/bold green]")
+                console.print(f"[blue]Results displayed above - no files saved[/blue]")
             else:
                 console.print(f"[red]SMB enumeration failed: {result.stderr}[/red]")
                 console.print(f"[blue]Partial output: {result.stdout[:500]}...[/blue]")
@@ -1724,26 +1667,22 @@ class NetHawk:
                     dns_results["NS_records"] = result.stdout
                 progress.advance(task)
             
-            # Save results
-            output_file = os.path.join(self.logs_path, f"dns_recon_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
-            with open(output_file, 'w') as f:
-                json.dump(dns_results, f, indent=2)
-            
-            console.print(f"[green]✓ DNS reconnaissance completed![/green]")
-            console.print(f"[blue]Results saved to: {output_file}[/blue]")
+            console.print(f"\n[bold green]📊 DNS RECONNAISSANCE RESULTS[/bold green]")
+            console.print(f"[blue]Target: {domain}[/blue]")
+            console.print(f"[yellow]Scan Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/yellow]")
             
             # Show results in terminal
-            console.print(f"\n[yellow]DNS Reconnaissance Results:[/yellow]")
+            console.print(f"\n[bold cyan]DNS QUERY RESULTS:[/bold cyan]")
             for query_type, result in dns_results.items():
                 if result:
-                    console.print(f"[blue]{query_type}:[/blue]")
-                    lines = result.split('\n')[:5]  # Show first 5 lines
+                    console.print(f"\n[bold]{query_type}:[/bold]")
+                    lines = result.split('\n')
                     for line in lines:
                         if line.strip():
-                            console.print(f"[white]  {line}[/white]")
-                    if len(result.split('\n')) > 5:
-                        console.print(f"[white]  ... and {len(result.split('\n')) - 5} more lines[/white]")
-                    console.print()
+                            console.print(f"[blue]  {line}[/blue]")
+            
+            console.print(f"\n[bold green]✅ DNS reconnaissance completed![/bold green]")
+            console.print(f"[blue]Results displayed above - no files saved[/blue]")
             
         except Exception as e:
             console.print(f"[red]Error during DNS reconnaissance: {e}[/red]")
