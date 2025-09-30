@@ -476,7 +476,12 @@ class NetHawk:
             cmd.append(monitor_iface)
             
             # Start the scan process
-            process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, text=True)
+            try:
+                process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, text=True)
+            except FileNotFoundError:
+                console.print(f"[red]Error: 'airodump-ng' command not found![/red]")
+                console.print(f"[blue]Please install aircrack-ng package: sudo apt install aircrack-ng[/blue]")
+                return
             
             # Real-time network discovery
             console.print(f"[blue]🔍 Scanning for networks...[/blue]")
@@ -944,6 +949,13 @@ class NetHawk:
                 console.print(f"[yellow]Nmap host discovery failed, trying individual pings...[/yellow]")
                 return []
                 
+        except FileNotFoundError:
+            console.print(f"[yellow]Warning: 'nmap' command not found. Install nmap package.[/yellow]")
+            console.print(f"[blue]Falling back to individual ping scans...[/blue]")
+            return []
+        except subprocess.TimeoutExpired:
+            console.print(f"[yellow]Warning: Nmap scan timed out for {network}[/yellow]")
+            return []
         except Exception as e:
             console.print(f"[yellow]Nmap discovery failed: {e}[/yellow]")
             return []
@@ -1012,7 +1024,14 @@ class NetHawk:
                             if ':' in part and len(part.split(':')) == 6:
                                 return part
             return "Unknown"
-        except Exception:
+        except FileNotFoundError:
+            console.print(f"[yellow]Warning: 'arp' command not found. Install net-tools package.[/yellow]")
+            return "Unknown"
+        except subprocess.TimeoutExpired:
+            console.print(f"[yellow]Warning: ARP lookup timed out for {ip}[/yellow]")
+            return "Unknown"
+        except Exception as e:
+            console.print(f"[yellow]Warning: ARP lookup failed: {e}[/yellow]")
             return "Unknown"
     
     def _aggressive_port_scan_with_progress(self, hosts, port_range, scan_type):
@@ -1858,6 +1877,13 @@ class NetHawk:
             result = subprocess.run(["ping", "-c", str(count), "-W", str(timeout), ip],
                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             return result.returncode == 0
+        except FileNotFoundError:
+            console.print(f"[yellow]Warning: 'ping' command not found. Install iputils-ping package.[/yellow]")
+            # fallback to aggressive ping
+            return self._aggressive_ping_host(ip)
+        except subprocess.TimeoutExpired:
+            console.print(f"[yellow]Warning: Ping timed out for {ip}[/yellow]")
+            return False
         except Exception:
             # fallback to aggressive ping
             return self._aggressive_ping_host(ip)
