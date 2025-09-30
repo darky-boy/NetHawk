@@ -2547,21 +2547,24 @@ class NetHawk:
             for line in lines:
                 line = line.strip()
                 
-                # Parse A records
-                if query_type == "A" and "IN A" in line and domain in line:
-                    ip = line.split()[-1]
-                    if ip.replace('.', '').isdigit():
-                        dns_info.append({
-                            "type": "A Record",
-                            "value": f"{domain} -> {ip}",
-                            "description": "IPv4 address mapping for the domain"
-                        })
+                # Parse A records - look for lines with domain and IN A
+                if query_type == "A" and "IN A" in line and domain in line and not line.startswith(';'):
+                    # Extract IP from the end of the line
+                    parts = line.split()
+                    if len(parts) >= 4 and parts[-2] == "A":
+                        ip = parts[-1]
+                        if ip.replace('.', '').isdigit():
+                            dns_info.append({
+                                "type": "A Record",
+                                "value": f"{domain} -> {ip}",
+                                "description": "IPv4 address mapping for the domain"
+                            })
                 
                 # Parse MX records
-                elif query_type == "MX" and "IN MX" in line:
+                elif query_type == "MX" and "IN MX" in line and not line.startswith(';'):
                     parts = line.split()
-                    if len(parts) >= 4:
-                        priority = parts[-2]
+                    if len(parts) >= 4 and parts[-2] == "MX":
+                        priority = parts[-3]
                         mailserver = parts[-1].rstrip('.')
                         dns_info.append({
                             "type": "MX Record",
@@ -2570,39 +2573,59 @@ class NetHawk:
                         })
                 
                 # Parse NS records
-                elif query_type == "NS" and "IN NS" in line:
-                    nameserver = line.split()[-1].rstrip('.')
-                    dns_info.append({
-                        "type": "NS Record",
-                        "value": nameserver,
-                        "description": "Name server responsible for the domain"
-                    })
-                
-                # Parse TXT records
-                elif query_type == "TXT" and "IN TXT" in line:
-                    txt_content = line.split('IN TXT')[1].strip().strip('"')
-                    if txt_content and len(txt_content) > 5:
+                elif query_type == "NS" and "IN NS" in line and not line.startswith(';'):
+                    parts = line.split()
+                    if len(parts) >= 3 and parts[-2] == "NS":
+                        nameserver = parts[-1].rstrip('.')
                         dns_info.append({
-                            "type": "TXT Record",
-                            "value": txt_content,
-                            "description": "Text record (may contain SPF, DKIM, or other info)"
+                            "type": "NS Record",
+                            "value": nameserver,
+                            "description": "Name server responsible for the domain"
                         })
                 
+                # Parse TXT records
+                elif query_type == "TXT" and "IN TXT" in line and not line.startswith(';'):
+                    # Extract TXT content - it might be quoted
+                    if '"' in line:
+                        start = line.find('"')
+                        end = line.rfind('"')
+                        if start != end:
+                            txt_content = line[start+1:end]
+                            if txt_content and len(txt_content) > 5:
+                                dns_info.append({
+                                    "type": "TXT Record",
+                                    "value": txt_content,
+                                    "description": "Text record (may contain SPF, DKIM, or other info)"
+                                })
+                    else:
+                        # Fallback for unquoted TXT records
+                        parts = line.split()
+                        if len(parts) >= 3 and parts[-2] == "TXT":
+                            txt_content = parts[-1]
+                            if txt_content and len(txt_content) > 5:
+                                dns_info.append({
+                                    "type": "TXT Record",
+                                    "value": txt_content,
+                                    "description": "Text record (may contain SPF, DKIM, or other info)"
+                                })
+                
                 # Parse CNAME records
-                elif query_type == "CNAME" and "IN CNAME" in line:
-                    cname_target = line.split()[-1].rstrip('.')
-                    dns_info.append({
-                        "type": "CNAME Record",
-                        "value": f"www.{domain} -> {cname_target}",
-                        "description": "Canonical name alias for the domain"
-                    })
+                elif query_type == "CNAME" and "IN CNAME" in line and not line.startswith(';'):
+                    parts = line.split()
+                    if len(parts) >= 3 and parts[-2] == "CNAME":
+                        cname_target = parts[-1].rstrip('.')
+                        dns_info.append({
+                            "type": "CNAME Record",
+                            "value": f"www.{domain} -> {cname_target}",
+                            "description": "Canonical name alias for the domain"
+                        })
                 
                 # Parse SOA records
-                elif query_type == "SOA" and "IN SOA" in line:
+                elif query_type == "SOA" and "IN SOA" in line and not line.startswith(';'):
                     parts = line.split()
-                    if len(parts) >= 7:
-                        primary_ns = parts[-7].rstrip('.')
-                        admin_email = parts[-6].rstrip('.')
+                    if len(parts) >= 7 and parts[-6] == "SOA":
+                        primary_ns = parts[-5].rstrip('.')
+                        admin_email = parts[-4].rstrip('.')
                         dns_info.append({
                             "type": "SOA Record",
                             "value": f"Primary NS: {primary_ns}, Admin: {admin_email}",
