@@ -780,12 +780,12 @@ class NetHawk:
 
         try:
             console.print(f"[blue]AGGRESSIVE scanning network: {network_string}[/blue]")
-            console.print(f"[blue]Debug: About to start scan with network_string = '{network_string}'[/blue]")
             
-            # Get scan options
-            console.print("\n[bold]AGGRESSIVE Scan Options:[/bold]")
-            port_range = Prompt.ask("Port range (e.g., 1-1000, top1000, all)", default="top1000")
-            scan_type = Prompt.ask("Scan type (fast/aggressive/comprehensive)", default="aggressive")
+            # Simple scan - no complicated options
+            console.print("\n[bold]AGGRESSIVE Scan:[/bold]")
+            console.print("[blue]Using optimized settings for best results[/blue]")
+            port_range = "top1000"  # Fixed to top 1000 ports
+            scan_type = "aggressive"  # Fixed to aggressive scan
             
             # Perform AGGRESSIVE scan with real-time progress
             console.print(f"\n[bold blue]🔍 Starting AGGRESSIVE Network Discovery...[/bold blue]")
@@ -1878,7 +1878,6 @@ class NetHawk:
                 else:
                     cmd = ["nmap", "-T4", "-sS", "-sV", "-O", ip]  # Default comprehensive scan
             
-            console.print(f"[blue]Running: {' '.join(cmd)}[/blue]")
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
             
             if result.returncode == 0:
