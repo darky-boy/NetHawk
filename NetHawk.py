@@ -2633,70 +2633,158 @@ class NetHawk:
     
     def comprehensive_reporting(self):
         """Generate comprehensive security assessment report."""
-        console.print("[bold red]Comprehensive Security Assessment Report[/bold red]")
+        console.print("[bold red]📊 Comprehensive Security Assessment Report[/bold red]")
         console.print("=" * 50)
         
-        report_file = os.path.join(self.session_path, f"comprehensive_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
+        # Report options
+        console.print(f"\n[bold]⚙️ Report Options:[/bold]")
+        report_type = self.validate_input(
+            "Select report type (1=Summary, 2=Detailed, 3=Full): ",
+            ["1", "2", "3"]
+        )
+        
+        # Generate report
+        console.print(f"\n[blue]🚀 Generating comprehensive report...[/blue]")
         
         try:
+            # Create report file
+            report_file = os.path.join(self.session_path, f"comprehensive_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
+            
             with open(report_file, 'w') as f:
+                # Header
                 f.write("=" * 80 + "\n")
                 f.write("NetHawk v3.0 - Comprehensive Security Assessment Report\n")
                 f.write("=" * 80 + "\n")
                 f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-                f.write(f"Session: {self.session_path}\n\n")
+                f.write(f"Session: {self.session_path}\n")
+                f.write(f"Report Type: {'Summary' if report_type == '1' else 'Detailed' if report_type == '2' else 'Full'}\n\n")
                 
                 # Executive Summary
                 f.write("EXECUTIVE SUMMARY\n")
                 f.write("-" * 40 + "\n")
                 f.write("This report contains the results of comprehensive network security assessment\n")
-                f.write("performed using NetHawk v3.0 - AGGRESSIVE penetration testing tool.\n\n")
+                f.write("performed using NetHawk v3.0 - Professional penetration testing tool.\n\n")
                 
-                # Session Summary
-                f.write("SESSION SUMMARY\n")
+                # Session Information
+                f.write("SESSION INFORMATION\n")
                 f.write("-" * 40 + "\n")
                 f.write(f"Session Number: {self.session_number}\n")
                 f.write(f"Session Path: {self.session_path}\n")
-                f.write(f"Report Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+                f.write(f"Report Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"Python Version: {sys.version.split()[0]}\n")
+                f.write(f"Platform: {sys.platform}\n\n")
+                
+                # Available Tools
+                f.write("AVAILABLE TOOLS\n")
+                f.write("-" * 40 + "\n")
+                available_tools = [k for k, v in self.tools_available.items() if v]
+                f.write(f"Tools Available: {', '.join(available_tools) if available_tools else 'None'}\n")
+                f.write(f"Total Tools: {len(available_tools)}/{len(self.tools_available)}\n\n")
                 
                 # Captured Handshakes
                 f.write("CAPTURED HANDSHAKES\n")
                 f.write("-" * 40 + "\n")
                 cap_files = [f for f in os.listdir(self.handshakes_path) if f.endswith('.cap')]
                 if cap_files:
+                    f.write(f"Total Handshakes Captured: {len(cap_files)}\n")
                     for cap_file in cap_files:
                         cap_path = os.path.join(self.handshakes_path, cap_file)
                         file_size = os.path.getsize(cap_path)
-                        f.write(f"File: {cap_file} ({file_size} bytes)\n")
-                        f.write(f"  Status: Captured - ready for external cracking\n")
-                        f.write("\n")
+                        f.write(f"  • {cap_file} ({file_size} bytes)\n")
+                        f.write(f"    Status: Captured - ready for external cracking\n")
                 else:
                     f.write("No handshake files captured.\n")
                 f.write("\n")
                 
-                # Vulnerabilities
-                f.write("DISCOVERED VULNERABILITIES\n")
+                # Vulnerability Reports
+                f.write("VULNERABILITY REPORTS\n")
                 f.write("-" * 40 + "\n")
                 vuln_files = [f for f in os.listdir(self.vulns_path) if f.endswith('.json')]
                 if vuln_files:
+                    f.write(f"Total Vulnerability Reports: {len(vuln_files)}\n")
                     for vuln_file in vuln_files:
-                        f.write(f"Vulnerability Report: {vuln_file}\n")
+                        f.write(f"  • {vuln_file}\n")
+                        # Try to parse and show summary
+                        try:
+                            vuln_path = os.path.join(self.vulns_path, vuln_file)
+                            with open(vuln_path, 'r') as vf:
+                                vuln_data = json.load(vf)
+                                if 'total_count' in vuln_data:
+                                    f.write(f"    Vulnerabilities Found: {vuln_data['total_count']}\n")
+                                if 'target' in vuln_data:
+                                    f.write(f"    Target: {vuln_data['target']}\n")
+                        except:
+                            pass
                 else:
                     f.write("No vulnerability reports generated.\n")
                 f.write("\n")
                 
-                # System Information
-                f.write("SYSTEM INFORMATION\n")
+                # Session Statistics
+                f.write("SESSION STATISTICS\n")
                 f.write("-" * 40 + "\n")
-                f.write(f"Python Version: {sys.version}\n")
-                f.write(f"Platform: {sys.platform}\n")
-                f.write(f"Working Directory: {os.getcwd()}\n")
-                f.write(f"Available Tools: {', '.join([k for k, v in self.tools_available.items() if v])}\n")
+                f.write(f"Handshakes Directory: {self.handshakes_path}\n")
+                f.write(f"Vulnerabilities Directory: {self.vulns_path}\n")
+                f.write(f"Logs Directory: {self.logs_path}\n")
+                f.write(f"Reports Directory: {self.reports_path}\n\n")
+                
+                # File Counts
+                f.write("FILE COUNTS\n")
+                f.write("-" * 40 + "\n")
+                f.write(f"Handshake Files: {len(cap_files)}\n")
+                f.write(f"Vulnerability Reports: {len(vuln_files)}\n")
+                
+                # Count other files
+                try:
+                    log_files = [f for f in os.listdir(self.logs_path) if f.endswith('.jsonl')]
+                    f.write(f"Log Files: {len(log_files)}\n")
+                except:
+                    f.write("Log Files: 0\n")
+                
+                try:
+                    report_files = [f for f in os.listdir(self.reports_path) if f.endswith('.txt')]
+                    f.write(f"Report Files: {len(report_files)}\n")
+                except:
+                    f.write("Report Files: 0\n")
+                
+                f.write("\n")
+                
+                # Recommendations
+                f.write("RECOMMENDATIONS\n")
+                f.write("-" * 40 + "\n")
+                f.write("1. Review all captured handshakes for potential security issues\n")
+                f.write("2. Analyze vulnerability reports for remediation steps\n")
+                f.write("3. Use external tools (aircrack-ng, hashcat) for handshake cracking\n")
+                f.write("4. Implement security measures based on findings\n")
+                f.write("5. Regular security assessments recommended\n\n")
+                
+                # Footer
+                f.write("=" * 80 + "\n")
+                f.write("Report generated by NetHawk v3.0\n")
+                f.write("For security purposes only - use responsibly\n")
+                f.write("=" * 80 + "\n")
             
-            console.print(f"[green]✓ Comprehensive report generated: {report_file}[/green]")
+            # Display summary
+            console.print(f"\n[green]✅ Comprehensive report generated![/green]")
+            console.print(f"[blue]Report saved to: {report_file}[/blue]")
+            
+            # Show report summary
+            console.print(f"\n[bold green]📊 REPORT SUMMARY[/bold green]")
+            console.print(f"[blue]Session: {self.session_number}[/blue]")
+            console.print(f"[green]Handshakes Captured: {len(cap_files)}[/green]")
+            console.print(f"[green]Vulnerability Reports: {len(vuln_files)}[/green]")
+            console.print(f"[yellow]Available Tools: {len(available_tools)}/{len(self.tools_available)}[/yellow]")
+            
+            # Show file locations
+            console.print(f"\n[bold cyan]📁 File Locations:[/bold cyan]")
+            console.print(f"[blue]Handshakes: {self.handshakes_path}[/blue]")
+            console.print(f"[blue]Vulnerabilities: {self.vulns_path}[/blue]")
+            console.print(f"[blue]Logs: {self.logs_path}[/blue]")
+            console.print(f"[blue]Reports: {self.reports_path}[/blue]")
             
         except Exception as e:
-            console.print(f"[red]Error generating comprehensive report: {e}[/red]")
+            console.print(f"[red]❌ Error generating comprehensive report: {e}[/red]")
+        
+        console.print(f"\n[yellow]Press Ctrl+C to stop[/yellow]")
     
     def _load_config(self):
         """Load configuration (placeholder). Returns dict of defaults."""
