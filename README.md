@@ -18,7 +18,14 @@ git clone https://github.com/darky-boy/NetHawk.git
 cd NetHawk
 ```
 
-### **Step 2: Install Dependencies**
+### **Step 2: Run Setup Script (Recommended)**
+```bash
+# Make setup script executable and run it
+chmod +x setup.sh
+./setup.sh
+```
+
+**OR Manual Installation:**
 ```bash
 # Install Python dependencies
 pip3 install -r requirements.txt
@@ -267,10 +274,10 @@ When reporting issues, please include:
 # 1. Clone and setup
 git clone https://github.com/darky-boy/NetHawk.git
 cd NetHawk
-pip3 install -r requirements.txt
 
-# 2. Install system tools
-sudo apt install aircrack-ng nmap nikto enum4linux dnsutils
+# 2. Run setup script (recommended)
+chmod +x setup.sh
+./setup.sh
 
 # 3. Run NetHawk
 sudo python3 NetHawk.py
