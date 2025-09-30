@@ -1956,15 +1956,15 @@ class NetHawk:
         
         # Build nikto command based on scan type
         if scan_type == "1":  # Quick
-            cmd = ["nikto", "-h", target_url, "-Tuning", "1,2,3,4,5", "-timeout", "10"]
+            cmd = ["nikto", "-h", target_url, "-Tuning", "1,2,3,4,5", "-timeout", "10", "-maxtime", "300s", "-Format", "txt"]
             scan_name = "Quick Web Application Scan"
             timeout = 300  # 5 minutes
         elif scan_type == "2":  # Standard
-            cmd = ["nikto", "-h", target_url, "-Tuning", "1,2,3,4,5,6,7", "-timeout", "15"]
+            cmd = ["nikto", "-h", target_url, "-Tuning", "1,2,3,4,5,6,7", "-timeout", "15", "-maxtime", "600s", "-Format", "txt"]
             scan_name = "Standard Web Application Scan"
             timeout = 600  # 10 minutes
         else:  # Comprehensive
-            cmd = ["nikto", "-h", target_url, "-Tuning", "0", "-timeout", "20", "-evasion", "1"]
+            cmd = ["nikto", "-h", target_url, "-Tuning", "0", "-timeout", "20", "-maxtime", "1200s", "-evasion", "1", "-Format", "txt"]
             scan_name = "Comprehensive Web Application Scan"
             timeout = 1200  # 20 minutes
         
@@ -2000,7 +2000,8 @@ class NetHawk:
                 stdout, stderr = process.communicate()
             
             # Parse and display results
-            if process.returncode == 0:
+            # Check if we got any useful output even if returncode != 0
+            if stdout and ("+ " in stdout or "OSVDB-" in stdout or "Target IP:" in stdout):
                 console.print(f"\n[green]✅ Web application scan completed![/green]")
                 
                 # Parse vulnerabilities
@@ -2041,6 +2042,17 @@ class NetHawk:
                 if stdout:
                     console.print(f"[blue]Partial output: {stdout[:500]}...[/blue]")
                 
+                # Check for specific nikto error patterns
+                if "Error limit" in stderr or "Error limit" in stdout:
+                    console.print(f"\n[yellow]💡 Tip: Nikto hit its error limit. This is common with some targets.[/yellow]")
+                    console.print(f"[blue]Try using a different scan type or target a different URL.[/blue]")
+                elif "Connection refused" in stderr or "Connection refused" in stdout:
+                    console.print(f"\n[yellow]💡 Tip: Connection refused. Check if the target is accessible.[/yellow]")
+                    console.print(f"[blue]Try: ping {target_url.split('://')[1].split('/')[0]}[/blue]")
+                elif "timeout" in stderr.lower() or "timeout" in stdout.lower():
+                    console.print(f"\n[yellow]💡 Tip: Timeout occurred. The target may be slow to respond.[/yellow]")
+                    console.print(f"[blue]Try using a Quick scan instead of Comprehensive.[/blue]")
+                
         except subprocess.TimeoutExpired:
             console.print(f"[yellow]⏰ Web application scan timed out after {timeout} seconds[/yellow]")
         except Exception as e:
@@ -2058,7 +2070,7 @@ class NetHawk:
             line = line.strip()
             
             # Look for vulnerability markers in nikto output
-            if '+ OSVDB-' in line or '+ ' in line and ('vulnerable' in line.lower() or 'risk' in line.lower()):
+            if '+ OSVDB-' in line or ('+ ' in line and ('vulnerable' in line.lower() or 'risk' in line.lower() or 'header' in line.lower() or 'directory' in line.lower() or 'file' in line.lower())):
                 if current_vuln:
                     vulnerabilities.append(current_vuln)
                 
@@ -2083,18 +2095,18 @@ class NetHawk:
                 
                 # Determine severity based on keywords
                 title_lower = title.lower()
-                if any(word in title_lower for word in ['critical', 'remote code execution', 'rce', 'sql injection']):
+                if any(word in title_lower for word in ['critical', 'remote code execution', 'rce', 'sql injection', 'buffer overflow']):
                     current_vuln["severity"] = "Critical"
-                elif any(word in title_lower for word in ['high', 'buffer overflow', 'xss', 'cross-site']):
+                elif any(word in title_lower for word in ['high', 'xss', 'cross-site', 'directory traversal', 'file upload']):
                     current_vuln["severity"] = "High"
-                elif any(word in title_lower for word in ['medium', 'information disclosure', 'directory traversal']):
+                elif any(word in title_lower for word in ['medium', 'information disclosure', 'header', 'version disclosure']):
                     current_vuln["severity"] = "Medium"
-                elif any(word in title_lower for word in ['low', 'info', 'version disclosure']):
+                elif any(word in title_lower for word in ['low', 'info', 'default', 'directory', 'file']):
                     current_vuln["severity"] = "Low"
                 else:
                     current_vuln["severity"] = "Unknown"
                     
-            elif current_vuln and line and not line.startswith('+') and not line.startswith('-'):
+            elif current_vuln and line and not line.startswith('+') and not line.startswith('-') and not line.startswith('|'):
                 # Add to description
                 current_vuln["description"] += line + " "
         
