@@ -830,10 +830,10 @@ class NetHawk:
                     self._turbo_scan_all_hosts(hosts)
                 elif scan_choice == "2":
                     console.print(f"[green]✓ FAST AGGRESSIVE SCAN selected - Balanced speed/thoroughness![/green]")
-                    self._aggressive_port_scan_with_progress(hosts, "top2000", "aggressive")
+                    self._fast_aggressive_scan_all_hosts(hosts)
                 else:
                     console.print(f"[green]✓ ULTIMATE AGGRESSIVE SCAN selected - Maximum thoroughness![/green]")
-                    self._force_scan_all_hosts(hosts, "all", "aggressive")
+                    self._ultimate_aggressive_scan_all_hosts(hosts)
             
             # Display detailed results in terminal (no file saving)
             console.print(f"\n[bold green]📊 ACTIVE SCAN RESULTS SUMMARY[/bold green]")
@@ -2131,8 +2131,15 @@ class NetHawk:
                 ]
                 
                 try:
+                    console.print(f"[blue]Running: {' '.join(turbo_cmd)}[/blue]")
                     result = subprocess.run(turbo_cmd, capture_output=True, text=True, timeout=60)
                     raw = result.stdout if result.returncode == 0 else result.stdout + "\n" + result.stderr
+                    
+                    # DEBUG: Show what nmap found
+                    console.print(f"[dim]DEBUG: Nmap return code: {result.returncode}[/dim]")
+                    if raw:
+                        console.print(f"[dim]DEBUG: Raw nmap output (first 300 chars):[/dim]")
+                        console.print(f"[dim]{raw[:300]}...[/dim]")
                     
                     # Quick parsing
                     open_ports = []
@@ -2150,21 +2157,34 @@ class NetHawk:
                             })
                             services.append(m.group(4))
                     
+                    # Get MAC address and device detection
+                    mac = self._get_mac_address(host['ip']) if hasattr(self, "_get_mac_address") else "Unknown"
+                    mac_vendor = self._get_mac_vendor(mac) if hasattr(self, "_get_mac_vendor") else None
+                    
+                    # Quick device detection (no OS detection for speed)
+                    device_type = self._infer_device_type(open_ports, services, "Unknown", mac_vendor, mac)
+                    
                     # Update host with results
                     host['open_ports'] = open_ports
                     host['services'] = services
                     host['os'] = "Unknown"  # Skip OS detection for speed
-                    host['device'] = "Unknown"  # Skip device detection for speed
+                    host['device'] = device_type
+                    host['mac'] = mac
+                    host['mac_vendor'] = mac_vendor
                     
                     # Show quick results
+                    console.print(f"[green]✓ TURBO SCAN RESULTS:[/green]")
                     if open_ports:
-                        console.print(f"[green]✓ Found {len(open_ports)} open ports![/green]")
+                        console.print(f"[green]  Found {len(open_ports)} open ports![/green]")
                         for port in open_ports[:3]:  # Show first 3 ports
-                            console.print(f"  [blue]Port {port['port']}/{port['protocol']}: {port['service']}[/blue]")
+                            console.print(f"  [blue]  Port {port['port']}/{port['protocol']}: {port['service']}[/blue]")
                         if len(open_ports) > 3:
-                            console.print(f"  [blue]... and {len(open_ports)-3} more ports[/blue]")
+                            console.print(f"  [blue]  ... and {len(open_ports)-3} more ports[/blue]")
                     else:
-                        console.print(f"[yellow]⚠ No open ports found[/yellow]")
+                        console.print(f"[yellow]  No open ports found[/yellow]")
+                    
+                    if device_type != "Unknown":
+                        console.print(f"[green]  Device: {device_type}[/green]")
                     
                     console.print(f"[dim]Host {i} turbo scan completed in ~30s[/dim]")
                     
@@ -2172,6 +2192,185 @@ class NetHawk:
                     console.print(f"[red]Error turbo scanning {host['ip']}: {e}[/red]")
         
         console.print(f"\n[bold green]⚡ TURBO SCAN COMPLETED![/bold green]")
+    
+    def _fast_aggressive_scan_all_hosts(self, hosts):
+        """FAST AGGRESSIVE SCAN - Balanced speed and thoroughness (2-3 minutes per host)."""
+        console.print(f"[red]⚡ FAST AGGRESSIVE SCAN MODE - BALANCED SPEED![/red]")
+        console.print(f"[yellow]⚡ Scanning {len(hosts)} hosts in ~{len(hosts) * 2} minutes![/yellow]")
+        
+        for i, host in enumerate(hosts, 1):
+            if host.get('status') == 'up':
+                console.print(f"\n[bold blue]⚡ FAST AGGRESSIVE SCANNING HOST {i}/{len(hosts)}: {host['ip']}[/bold blue]")
+                
+                # FAST AGGRESSIVE SCAN: Top 2000 ports + UDP + OS detection
+                fast_cmd = [
+                    "nmap", "-Pn", "-sS", "-sV", "-O",
+                    "--top-ports", "2000",  # Top 2000 TCP ports
+                    "-sU", "--top-ports", "200",  # Top 200 UDP ports
+                    "-T4", "--max-retries", "2",
+                    "--host-timeout", "120s",  # 2 minute timeout
+                    "--version-intensity", "5",
+                    host['ip']
+                ]
+                
+                try:
+                    console.print(f"[blue]Running: {' '.join(fast_cmd)}[/blue]")
+                    result = subprocess.run(fast_cmd, capture_output=True, text=True, timeout=180)
+                    raw = result.stdout if result.returncode == 0 else result.stdout + "\n" + result.stderr
+                    
+                    # Enhanced parsing for fast scan results
+                    open_ports = []
+                    services = []
+                    os_info = "Unknown"
+                    
+                    for line in raw.splitlines():
+                        line = line.strip()
+                        # Parse ports
+                        m = re.match(r"^(\d+)\/(tcp|udp)\s+(open|open\|filtered)\s+([^\s]+)(\s+(.*))?$", line)
+                        if m and m.group(3) in ["open", "open|filtered"]:
+                            open_ports.append({
+                                "port": m.group(1),
+                                "protocol": m.group(2),
+                                "service": m.group(4),
+                                "banner": m.group(6) or "",
+                                "state": m.group(3)
+                            })
+                            services.append(m.group(4))
+                        
+                        # Parse OS info
+                        if "OS details:" in line:
+                            os_info = line.replace("OS details:", "").strip()
+                        elif "OS guesses:" in line:
+                            os_info = line.replace("OS guesses:", "").strip()
+                    
+                    # Get MAC address
+                    mac = self._get_mac_address(host['ip']) if hasattr(self, "_get_mac_address") else "Unknown"
+                    mac_vendor = self._get_mac_vendor(mac) if hasattr(self, "_get_mac_vendor") else None
+                    
+                    # Infer device type
+                    device_type = self._infer_device_type(open_ports, services, os_info, mac_vendor, mac)
+                    
+                    # Update host with results
+                    host['open_ports'] = open_ports
+                    host['services'] = services
+                    host['os'] = os_info
+                    host['device'] = device_type
+                    host['mac'] = mac
+                    host['mac_vendor'] = mac_vendor
+                    
+                    # Show results
+                    console.print(f"[green]✓ FAST AGGRESSIVE SCAN RESULTS:[/green]")
+                    if open_ports:
+                        console.print(f"[green]  Found {len(open_ports)} open ports![/green]")
+                        for port in open_ports[:5]:  # Show first 5 ports
+                            console.print(f"  [blue]  Port {port['port']}/{port['protocol']}: {port['service']}[/blue]")
+                        if len(open_ports) > 5:
+                            console.print(f"  [blue]  ... and {len(open_ports)-5} more ports[/blue]")
+                    else:
+                        console.print(f"[yellow]  No open ports found[/yellow]")
+                    
+                    if os_info != "Unknown":
+                        console.print(f"[green]  OS: {os_info}[/green]")
+                    
+                    if device_type != "Unknown":
+                        console.print(f"[green]  Device: {device_type}[/green]")
+                    
+                    console.print(f"[dim]Host {i} fast aggressive scan completed[/dim]")
+                    
+                except Exception as e:
+                    console.print(f"[red]Error fast aggressive scanning {host['ip']}: {e}[/red]")
+        
+        console.print(f"\n[bold green]⚡ FAST AGGRESSIVE SCAN COMPLETED![/bold green]")
+    
+    def _ultimate_aggressive_scan_all_hosts(self, hosts):
+        """ULTIMATE AGGRESSIVE SCAN - Maximum thoroughness (10-15 minutes per host)."""
+        console.print(f"[red]🔥 ULTIMATE AGGRESSIVE SCAN MODE - MAXIMUM THOROUGHNESS![/red]")
+        console.print(f"[yellow]🔥 Scanning {len(hosts)} hosts in ~{len(hosts) * 10} minutes![/yellow]")
+        
+        for i, host in enumerate(hosts, 1):
+            if host.get('status') == 'up':
+                console.print(f"\n[bold blue]🔥 ULTIMATE AGGRESSIVE SCANNING HOST {i}/{len(hosts)}: {host['ip']}[/bold blue]")
+                
+                # ULTIMATE AGGRESSIVE SCAN: All ports + UDP + scripts
+                ultimate_cmd = [
+                    "nmap", "-Pn", "-sS", "-sV", "-O",
+                    "-p-",  # ALL TCP ports
+                    "-sU", "--top-ports", "1000",  # Top 1000 UDP ports
+                    "-T5", "--max-retries", "3",
+                    "--host-timeout", "300s",  # 5 minute timeout
+                    "--version-intensity", "9",
+                    "--script", "default,vuln",
+                    host['ip']
+                ]
+                
+                try:
+                    console.print(f"[blue]Running: {' '.join(ultimate_cmd)}[/blue]")
+                    result = subprocess.run(ultimate_cmd, capture_output=True, text=True, timeout=600)
+                    raw = result.stdout if result.returncode == 0 else result.stdout + "\n" + result.stderr
+                    
+                    # Enhanced parsing for ultimate scan results
+                    open_ports = []
+                    services = []
+                    os_info = "Unknown"
+                    
+                    for line in raw.splitlines():
+                        line = line.strip()
+                        # Parse ports
+                        m = re.match(r"^(\d+)\/(tcp|udp)\s+(open|open\|filtered)\s+([^\s]+)(\s+(.*))?$", line)
+                        if m and m.group(3) in ["open", "open|filtered"]:
+                            open_ports.append({
+                                "port": m.group(1),
+                                "protocol": m.group(2),
+                                "service": m.group(4),
+                                "banner": m.group(6) or "",
+                                "state": m.group(3)
+                            })
+                            services.append(m.group(4))
+                        
+                        # Parse OS info
+                        if "OS details:" in line:
+                            os_info = line.replace("OS details:", "").strip()
+                        elif "OS guesses:" in line:
+                            os_info = line.replace("OS guesses:", "").strip()
+                    
+                    # Get MAC address
+                    mac = self._get_mac_address(host['ip']) if hasattr(self, "_get_mac_address") else "Unknown"
+                    mac_vendor = self._get_mac_vendor(mac) if hasattr(self, "_get_mac_vendor") else None
+                    
+                    # Infer device type
+                    device_type = self._infer_device_type(open_ports, services, os_info, mac_vendor, mac)
+                    
+                    # Update host with results
+                    host['open_ports'] = open_ports
+                    host['services'] = services
+                    host['os'] = os_info
+                    host['device'] = device_type
+                    host['mac'] = mac
+                    host['mac_vendor'] = mac_vendor
+                    
+                    # Show results
+                    console.print(f"[green]✓ ULTIMATE AGGRESSIVE SCAN RESULTS:[/green]")
+                    if open_ports:
+                        console.print(f"[green]  Found {len(open_ports)} open ports![/green]")
+                        for port in open_ports[:5]:  # Show first 5 ports
+                            console.print(f"  [blue]  Port {port['port']}/{port['protocol']}: {port['service']}[/blue]")
+                        if len(open_ports) > 5:
+                            console.print(f"  [blue]  ... and {len(open_ports)-5} more ports[/blue]")
+                    else:
+                        console.print(f"[yellow]  No open ports found[/yellow]")
+                    
+                    if os_info != "Unknown":
+                        console.print(f"[green]  OS: {os_info}[/green]")
+                    
+                    if device_type != "Unknown":
+                        console.print(f"[green]  Device: {device_type}[/green]")
+                    
+                    console.print(f"[dim]Host {i} ultimate aggressive scan completed[/dim]")
+                    
+                except Exception as e:
+                    console.print(f"[red]Error ultimate aggressive scanning {host['ip']}: {e}[/red]")
+        
+        console.print(f"\n[bold green]🔥 ULTIMATE AGGRESSIVE SCAN COMPLETED![/bold green]")
     
     def vulnerability_assessment(self):
         """Perform vulnerability assessment on discovered hosts."""
