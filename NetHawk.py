@@ -717,38 +717,75 @@ class NetHawk:
         console.print("[bold red]AGGRESSIVE Active Network Scan[/bold red]")
         console.print("=" * 50)
         
-        # Simplified approach - just ask for network directly
-        console.print(f"[blue]Enter the network you want to scan:[/blue]")
-        console.print(f"[yellow]Examples: 192.168.1.0/24, 192.168.0.0/24, 10.0.0.0/24[/yellow]")
+        # Auto-detect current network
+        console.print(f"[blue]Auto-detecting your current network...[/blue]")
+        target = self._get_current_network()
         
-        while True:
-            target = Prompt.ask("Enter target network (e.g., 192.168.1.0/24)")
-            
-            # Basic validation
-            if not target or target.strip() == '':
-                console.print("[red]Please enter a network[/red]")
-                continue
+        if target:
+            console.print(f"[green]✓ Detected network: {target}[/green]")
+            if not Confirm.ask(f"Scan detected network {target}?"):
+                # Manual input if user doesn't want detected network
+                while True:
+                    target = Prompt.ask("Enter target network (e.g., 192.168.1.0/24)")
+                    
+                    # Basic validation
+                    if not target or target.strip() == '':
+                        console.print("[red]Please enter a network[/red]")
+                        continue
+                        
+                    # Check for common invalid values
+                    if target.lower() in ['mac', 'none', 'null', 'undefined']:
+                        console.print(f"[red]Invalid network format: '{target}'[/red]")
+                        console.print(f"[blue]Please enter a valid network like 192.168.1.0/24[/blue]")
+                        continue
+                    
+                    # Validate network format
+                    if not ('/' in target and '.' in target):
+                        console.print(f"[red]Invalid network format: '{target}'[/red]")
+                        console.print(f"[blue]Please enter a valid network like 192.168.1.0/24[/blue]")
+                        continue
+                    
+                    try:
+                        # Try to create network object
+                        network = ipaddress.IPv4Network(target, strict=False)
+                        break
+                    except ValueError as e:
+                        console.print(f"[red]Invalid network format: {e}[/red]")
+                        console.print(f"[blue]Please enter a valid network like 192.168.1.0/24[/blue]")
+                        continue
+        else:
+            console.print(f"[yellow]Could not auto-detect network. Please enter manually:[/yellow]")
+            while True:
+                target = Prompt.ask("Enter target network (e.g., 192.168.1.0/24)")
                 
-            # Check for common invalid values
-            if target.lower() in ['mac', 'none', 'null', 'undefined']:
-                console.print(f"[red]Invalid network format: '{target}'[/red]")
-                console.print(f"[blue]Please enter a valid network like 192.168.1.0/24[/blue]")
-                continue
-            
-            # Validate network format
-            if not ('/' in target and '.' in target):
-                console.print(f"[red]Invalid network format: '{target}'[/red]")
-                console.print(f"[blue]Please enter a valid network like 192.168.1.0/24[/blue]")
-                continue
-            
-            try:
-                # Try to create network object
-                network = ipaddress.IPv4Network(target, strict=False)
-                break
-            except ValueError as e:
-                console.print(f"[red]Invalid network format: {e}[/red]")
-                console.print(f"[blue]Please enter a valid network like 192.168.1.0/24[/blue]")
-                continue
+                # Basic validation
+                if not target or target.strip() == '':
+                    console.print("[red]Please enter a network[/red]")
+                    continue
+                    
+                # Check for common invalid values
+                if target.lower() in ['mac', 'none', 'null', 'undefined']:
+                    console.print(f"[red]Invalid network format: '{target}'[/red]")
+                    console.print(f"[blue]Please enter a valid network like 192.168.1.0/24[/blue]")
+                    continue
+                
+                # Validate network format
+                if not ('/' in target and '.' in target):
+                    console.print(f"[red]Invalid network format: '{target}'[/red]")
+                    console.print(f"[blue]Please enter a valid network like 192.168.1.0/24[/blue]")
+                    continue
+                
+                try:
+                    # Try to create network object
+                    network = ipaddress.IPv4Network(target, strict=False)
+                    break
+                except ValueError as e:
+                    console.print(f"[red]Invalid network format: {e}[/red]")
+                    console.print(f"[blue]Please enter a valid network like 192.168.1.0/24[/blue]")
+                    continue
+        
+        # Create network object
+        network = ipaddress.IPv4Network(target, strict=False)
         
         try:
             console.print(f"[blue]AGGRESSIVE scanning network: {network}[/blue]")
@@ -823,6 +860,7 @@ class NetHawk:
             total_ips = 254
         
         console.print(f"[blue]Scanning {total_ips} IP addresses...[/blue]")
+        console.print(f"[yellow]Using multiple discovery methods: ping, arp, nmap...[/yellow]")
         
         with Progress(
             SpinnerColumn(),
@@ -833,32 +871,79 @@ class NetHawk:
         ) as progress:
             task = progress.add_task("Discovering hosts...", total=total_ips)
             
-            # Scan each IP with progress updates
-            for i, ip in enumerate(network.hosts()):
-                if i >= 254:  # Limit to /24
-                    break
-                
-                progress.update(task, description=f"Scanning {ip}... ({i+1}/{total_ips})")
-                
-                # Ping the host
-                if self._ping_host(str(ip)):
-                    hosts.append({
-                        "ip": str(ip),
-                        "status": "up",
-                        "open_ports": [],
-                        "os": "Unknown",
-                        "services": []
-                    })
-                    console.print(f"[green]✓ Found host: {ip}[/green]")
-                
-                # Update progress every 10 IPs
-                if i % 10 == 0:
-                    progress.update(task, completed=i+1)
+            # First try nmap for faster discovery
+            console.print(f"[blue]Trying nmap for fast host discovery...[/blue]")
+            nmap_hosts = self._nmap_host_discovery(network)
+            if nmap_hosts:
+                hosts.extend(nmap_hosts)
+                console.print(f"[green]✓ Nmap found {len(nmap_hosts)} hosts[/green]")
+            
+            # If nmap didn't find much, try individual pings
+            if len(hosts) < 5:  # If we found less than 5 hosts, try individual pings
+                console.print(f"[blue]Trying individual ping scans...[/blue]")
+                for i, ip in enumerate(network.hosts()):
+                    if i >= 254:  # Limit to /24
+                        break
+                    
+                    progress.update(task, description=f"Ping scanning {ip}... ({i+1}/{total_ips})")
+                    
+                    # Skip if already found by nmap
+                    if any(host["ip"] == str(ip) for host in hosts):
+                        continue
+                    
+                    # Try multiple ping methods
+                    if self._aggressive_ping_host(str(ip)):
+                        hosts.append({
+                            "ip": str(ip),
+                            "status": "up",
+                            "open_ports": [],
+                            "os": "Unknown",
+                            "services": []
+                        })
+                        console.print(f"[green]✓ Found host: {ip}[/green]")
+                    
+                    # Update progress every 5 IPs
+                    if i % 5 == 0:
+                        progress.update(task, completed=i+1)
             
             progress.update(task, description="Host discovery complete!")
             progress.update(task, completed=total_ips)
         
         return hosts
+    
+    def _nmap_host_discovery(self, network):
+        """Use nmap for fast host discovery."""
+        try:
+            console.print(f"[blue]Running nmap host discovery on {network}...[/blue]")
+            cmd = ["nmap", "-sn", "-T4", str(network)]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            
+            if result.returncode == 0:
+                hosts = []
+                lines = result.stdout.split('\n')
+                for line in lines:
+                    if 'Nmap scan report for' in line:
+                        # Extract IP from line like "Nmap scan report for 192.168.1.1"
+                        parts = line.split()
+                        for part in parts:
+                            if '.' in part and len(part.split('.')) == 4:
+                                ip = part
+                                hosts.append({
+                                    "ip": ip,
+                                    "status": "up",
+                                    "open_ports": [],
+                                    "os": "Unknown",
+                                    "services": []
+                                })
+                                console.print(f"[green]✓ Nmap found: {ip}[/green]")
+                return hosts
+            else:
+                console.print(f"[yellow]Nmap host discovery failed, trying individual pings...[/yellow]")
+                return []
+                
+        except Exception as e:
+            console.print(f"[yellow]Nmap discovery failed: {e}[/yellow]")
+            return []
 
     def _aggressive_host_discovery(self, network):
         """Perform AGGRESSIVE host discovery."""
@@ -1019,6 +1104,66 @@ class NetHawk:
             )
         
         console.print(table)
+    
+    def _get_current_network(self):
+        """Get current network using multiple methods."""
+        try:
+            # Method 1: Use ip route to get default route
+            result = subprocess.run(["ip", "route", "show", "default"], capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                for line in result.stdout.split('\n'):
+                    if 'default via' in line:
+                        parts = line.split()
+                        for i, part in enumerate(parts):
+                            if part == 'dev' and i + 1 < len(parts):
+                                interface = parts[i + 1]
+                                # Get IP for this interface
+                                ip_result = subprocess.run(["ip", "addr", "show", interface], capture_output=True, text=True, timeout=5)
+                                if ip_result.returncode == 0:
+                                    for ip_line in ip_result.stdout.split('\n'):
+                                        if 'inet ' in ip_line and '127.0.0.1' not in ip_line:
+                                            # Extract IP and subnet
+                                            ip_parts = ip_line.split()
+                                            for ip_part in ip_parts:
+                                                if '/' in ip_part and '.' in ip_part:
+                                                    ip = ip_part.split('/')[0]
+                                                    subnet = ip_part.split('/')[1]
+                                                    if '.' in ip and len(ip.split('.')) == 4:
+                                                        # Convert to network format
+                                                        network = '.'.join(ip.split('.')[:-1]) + '.0/' + subnet
+                                                        return network
+            
+            # Method 2: Use ip addr show to get all interfaces
+            result = subprocess.run(["ip", "addr", "show"], capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                for line in result.stdout.split('\n'):
+                    if 'inet ' in line and '127.0.0.1' not in line:
+                        # Extract IP and subnet
+                        parts = line.split()
+                        for part in parts:
+                            if '/' in part and '.' in part:
+                                ip = part.split('/')[0]
+                                subnet = part.split('/')[1]
+                                if '.' in ip and len(ip.split('.')) == 4:
+                                    # Convert to network format
+                                    network = '.'.join(ip.split('.')[:-1]) + '.0/' + subnet
+                                    return network
+            
+            # Method 3: Use hostname -I as fallback
+            result = subprocess.run(["hostname", "-I"], capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                ips = result.stdout.strip().split()
+                for ip in ips:
+                    if '.' in ip and len(ip.split('.')) == 4:
+                        # Assume /24 subnet
+                        network = '.'.join(ip.split('.')[:-1]) + '.0/24'
+                        return network
+            
+            return None
+            
+        except Exception as e:
+            console.print(f"[yellow]Network detection failed: {e}[/yellow]")
+            return None
     
     def _suggest_common_networks(self):
         """Suggest common network ranges."""
