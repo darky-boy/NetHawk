@@ -1106,7 +1106,7 @@ class NetHawk:
                 parts = line.split()
                 if len(parts) >= 3:
                     port_info = {
-                        "port": parts[0].split('/')[0],
+                        "port": str(parts[0].split('/')[0]),  # Ensure string format
                         "protocol": parts[0].split('/')[1],
                         "state": parts[1],
                         "service": parts[2] if len(parts) > 2 else "unknown"
@@ -1864,29 +1864,6 @@ class NetHawk:
         except Exception:
             return []
     
-    def _parse_nmap_output(self, nmap_output):
-        """Parse nmap output to extract open ports."""
-        ports = []
-        lines = nmap_output.split('\n')
-        
-        for line in lines:
-            if '/tcp' in line and 'open' in line:
-                parts = line.split()
-                if len(parts) >= 3:
-                    port_info = parts[0].split('/')
-                    if len(port_info) == 2:
-                        port = port_info[0]
-                        protocol = port_info[1]
-                        service = parts[2] if len(parts) > 2 else "unknown"
-                        
-                        ports.append({
-                            "port": int(port),
-                            "protocol": protocol,
-                            "service": service,
-                            "state": "open"
-                        })
-        
-        return ports
 
 def main():
     """Main entry point."""
