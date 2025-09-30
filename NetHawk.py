@@ -739,14 +739,30 @@ class NetHawk:
                 target = Prompt.ask("Enter target network (e.g., 192.168.1.0/24)")
             elif choice == "2":
                 target = self._auto_detect_current_network()
+                # If auto-detection fails, fall back to manual input
+                if not target or target == 'mac' or target is None:
+                    console.print(f"[yellow]Auto-detection failed, please enter network manually[/yellow]")
+                    target = Prompt.ask("Enter target network (e.g., 192.168.1.0/24)")
             else:
                 target = self._suggest_common_networks()
         
         try:
-            # Validate network - handle 'mac' error
-            if target == 'mac' or target is None:
+            # Validate network - handle 'mac' error and other invalid formats
+            if target == 'mac' or target is None or not target or target.strip() == '':
                 console.print(f"[red]Error: Invalid network format detected[/red]")
                 console.print(f"[blue]Please try again with a valid network like 192.168.1.0/24[/blue]")
+                return
+            
+            # Additional validation for common invalid values
+            if target.lower() in ['mac', 'none', 'null', 'undefined']:
+                console.print(f"[red]Error: Invalid network format: '{target}'[/red]")
+                console.print(f"[blue]Please try again with a valid network like 192.168.1.0/24[/blue]")
+                return
+            
+            # Validate network format
+            if not ('/' in target and '.' in target):
+                console.print(f"[red]Error: Invalid network format: '{target}'[/red]")
+                console.print(f"[blue]Please enter a valid network like 192.168.1.0/24[/blue]")
                 return
             
             # Validate network
@@ -1069,8 +1085,8 @@ class NetHawk:
                         for i, part in enumerate(parts):
                             if part == 'src' and i + 1 < len(parts):
                                 ip = parts[i + 1]
-                                # Validate IP format
-                                if '.' in ip and len(ip.split('.')) == 4:
+                                # Validate IP format - ensure it's a proper IP address
+                                if '.' in ip and len(ip.split('.')) == 4 and all(part.isdigit() for part in ip.split('.')):
                                     # Convert IP to network (assuming /24)
                                     network = '.'.join(ip.split('.')[:-1]) + '.0/24'
                                     console.print(f"[green]✓ Detected network: {network}[/green]")
@@ -1086,8 +1102,8 @@ class NetHawk:
                         for part in parts:
                             if '/' in part and '.' in part:
                                 ip = part.split('/')[0]
-                                # Validate IP format
-                                if '.' in ip and len(ip.split('.')) == 4:
+                                # Validate IP format - ensure it's a proper IP address
+                                if '.' in ip and len(ip.split('.')) == 4 and all(part.isdigit() for part in ip.split('.')):
                                     network = '.'.join(ip.split('.')[:-1]) + '.0/24'
                                     console.print(f"[green]✓ Detected network: {network}[/green]")
                                     return network
