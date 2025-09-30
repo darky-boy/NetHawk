@@ -2124,30 +2124,61 @@ class NetHawk:
             console.print(f"[yellow]⚠️ Could not save results: {e}[/yellow]")
     
     def smb_enumeration(self):
-        """SMB/Windows enumeration."""
-        console.print("[bold red]SMB/Windows Enumeration[/bold red]")
+        """Simple SMB/Windows enumeration using enum4linux."""
+        console.print("[bold red]🪟 SMB/Windows Enumeration[/bold red]")
         console.print("=" * 50)
         
-        # Check for SMB tools
+        # Check if enum4linux is available
         if not self.tools_available.get("enum4linux", False):
-            console.print("[red]enum4linux not found! Please install enum4linux.[/red]")
+            console.print("[red]❌ enum4linux not found! Please install enum4linux.[/red]")
+            console.print("[blue]Install: sudo apt install enum4linux[/blue]")
             return
         
         # Get target with IP validation
-        while True:
-            target = Prompt.ask("Enter target IP")
-            try:
-                ipaddress.IPv4Address(target)
-                break
-            except ValueError:
-                console.print("[red]Please enter a valid IP address[/red]")
+        console.print(f"\n[bold]🎯 Target Selection:[/bold]")
+        target = Prompt.ask("Enter target IP", default="")
         
-        console.print(f"[blue]Starting SMB enumeration on {target}...[/blue]")
+        if not target:
+            console.print("[red]❌ No target IP specified![/red]")
+            return
+        
+        # Validate IP format
+        try:
+            ipaddress.IPv4Address(target)
+        except ValueError:
+            console.print("[red]❌ Invalid IP address format![/red]")
+            console.print("[blue]Example: 192.168.1.1[/blue]")
+            return
+        
+        console.print(f"\n[blue]🎯 Target: {target}[/blue]")
+        
+        # Scan options
+        console.print(f"\n[bold]⚙️ Scan Options:[/bold]")
+        scan_type = self.validate_input(
+            "Select scan type (1=Quick, 2=Standard, 3=Comprehensive): ",
+            ["1", "2", "3"]
+        )
+        
+        # Build enum4linux command based on scan type
+        if scan_type == "1":  # Quick
+            cmd = ["enum4linux", "-U", "-M", "-S", "-P", target]
+            scan_name = "Quick SMB Enumeration"
+            timeout = 300  # 5 minutes
+        elif scan_type == "2":  # Standard
+            cmd = ["enum4linux", "-U", "-M", "-S", "-P", "-G", "-r", target]
+            scan_name = "Standard SMB Enumeration"
+            timeout = 600  # 10 minutes
+        else:  # Comprehensive
+            cmd = ["enum4linux", "-a", target]
+            scan_name = "Comprehensive SMB Enumeration"
+            timeout = 1200  # 20 minutes
+        
+        console.print(f"\n[blue]🚀 Starting {scan_name}...[/blue]")
+        console.print(f"[yellow]This may take several minutes depending on target[/yellow]")
+        console.print(f"[blue]Running: {' '.join(cmd)}[/blue]")
         
         try:
             # Run enum4linux with progress
-            cmd = ["enum4linux", "-a", target]
-            
             with Progress(
                 SpinnerColumn(),
                 TextColumn("[progress.description]{task.description}"),
@@ -2155,48 +2186,163 @@ class NetHawk:
                 TimeElapsedColumn(),
                 console=console
             ) as progress:
-                task = progress.add_task("Enumerating SMB services...", total=100)
+                task = progress.add_task(f"Enumerating {target}...", total=timeout)
                 
-                # Start enum4linux in background
+                # Start the scan
                 process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
                 
-                # Show progress with longer timeout for SMB scans
-                for i in range(600):  # 10 minutes max for SMB scans
-                    progress.update(task, description=f"Enumerating {target}... {i+1}/600s")
+                # Show progress
+                for i in range(timeout):
+                    progress.update(task, description=f"Enumerating {target}... {i+1}/{timeout}s")
                     time.sleep(1)
                     
                     # Check if process finished
                     if process.poll() is not None:
-                        progress.update(task, description="SMB enumeration completed!")
+                        progress.update(task, description="Scan completed!")
                         break
                 
                 # Get results
                 stdout, stderr = process.communicate()
-                result = type('obj', (object,), {'returncode': process.returncode, 'stdout': stdout, 'stderr': stderr})()
             
-            if result.returncode == 0:
-                console.print(f"\n[bold green]📊 SMB ENUMERATION RESULTS[/bold green]")
-                console.print(f"[blue]Target: {target}[/blue]")
-                console.print(f"[yellow]Scan Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/yellow]")
+            # Parse and display results
+            if process.returncode == 0:
+                console.print(f"\n[green]✅ SMB enumeration completed![/green]")
                 
-                # Show detailed results in terminal
-                if result.stdout:
-                    console.print(f"\n[bold cyan]ENUMERATION RESULTS:[/bold cyan]")
-                    lines = result.stdout.split('\n')
-                    for line in lines:
-                        if line.strip():
-                            console.print(f"[blue]{line}[/blue]")
+                # Parse SMB information
+                smb_info = self._parse_smb_results(stdout)
                 
-                console.print(f"\n[bold green]✅ SMB enumeration completed![/bold green]")
-                console.print(f"[blue]Results displayed above - no files saved[/blue]")
+                if smb_info:
+                    console.print(f"\n[bold green]📊 SMB ENUMERATION RESULTS[/bold green]")
+                    console.print(f"[blue]Target: {target}[/blue]")
+                    console.print(f"[green]Information Found: {len(smb_info)} items[/green]")
+                    console.print(f"[yellow]Scan Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/yellow]")
+                    
+                    # Display SMB information
+                    console.print(f"\n[bold cyan]🔍 DISCOVERED SMB INFORMATION:[/bold cyan]")
+                    for i, info in enumerate(smb_info, 1):
+                        console.print(f"\n[bold]Information {i}:[/bold]")
+                        console.print(f"  [red]Type:[/red] {info['type']}")
+                        console.print(f"  [yellow]Value:[/yellow] {info['value']}")
+                        console.print(f"  [blue]Description:[/blue] {info['description']}")
+                    
+                    # Save results
+                    self._save_smb_results(smb_info, target)
+                    
+                else:
+                    console.print(f"\n[yellow]⚠️ No SMB information found.[/yellow]")
+                    console.print(f"[blue]Target may not have SMB services or they are not accessible[/blue]")
+                    console.print(f"[yellow]Note: This doesn't guarantee the target is completely secure[/yellow]")
+                
+                # Show raw output for reference
+                if stdout:
+                    console.print(f"\n[bold cyan]📋 Raw Scan Output:[/bold cyan]")
+                    console.print(f"[dim]{stdout[:1000]}{'...' if len(stdout) > 1000 else ''}[/dim]")
+                
             else:
-                console.print(f"[red]SMB enumeration failed: {result.stderr}[/red]")
-                console.print(f"[blue]Partial output: {result.stdout[:500]}...[/blue]")
+                console.print(f"[red]❌ SMB enumeration failed![/red]")
+                console.print(f"[yellow]Error: {stderr[:500] if stderr else 'Unknown error'}[/yellow]")
+                if stdout:
+                    console.print(f"[blue]Partial output: {stdout[:500]}...[/blue]")
                 
         except subprocess.TimeoutExpired:
-            console.print("[yellow]SMB enumeration timed out[/yellow]")
+            console.print(f"[yellow]⏰ SMB enumeration timed out after {timeout} seconds[/yellow]")
         except Exception as e:
-            console.print(f"[red]Error during SMB enumeration: {e}[/red]")
+            console.print(f"[red]❌ Error during SMB enumeration: {e}[/red]")
+        
+        console.print(f"\n[yellow]Press Ctrl+C to stop[/yellow]")
+    
+    def _parse_smb_results(self, enum4linux_output):
+        """Parse enum4linux output to extract SMB information with simple method."""
+        smb_info = []
+        lines = enum4linux_output.split('\n')
+        
+        for line in lines:
+            line = line.strip()
+            
+            # Look for specific SMB information patterns
+            if 'Got domain/workgroup name:' in line:
+                value = line.split('Got domain/workgroup name:')[1].strip()
+                smb_info.append({
+                    "type": "Domain/Workgroup",
+                    "value": value,
+                    "description": "The domain or workgroup name of the target"
+                })
+            elif 'Got domain SID:' in line:
+                value = line.split('Got domain SID:')[1].strip()
+                smb_info.append({
+                    "type": "Domain SID",
+                    "value": value,
+                    "description": "The Security Identifier of the domain"
+                })
+            elif 'User:' in line and 'rid:' in line:
+                # Extract username and RID
+                parts = line.split()
+                username = parts[1] if len(parts) > 1 else "Unknown"
+                rid = parts[-1] if len(parts) > 2 else "Unknown"
+                smb_info.append({
+                    "type": "User Account",
+                    "value": f"{username} (RID: {rid})",
+                    "description": "User account found on the target system"
+                })
+            elif 'Share name:' in line:
+                value = line.split('Share name:')[1].strip()
+                smb_info.append({
+                    "type": "SMB Share",
+                    "value": value,
+                    "description": "Shared folder or resource accessible via SMB"
+                })
+            elif 'Server:' in line and 'OS:' in line:
+                # Extract server OS information
+                value = line.split('OS:')[1].strip() if 'OS:' in line else line
+                smb_info.append({
+                    "type": "Server OS",
+                    "value": value,
+                    "description": "Operating system information of the target server"
+                })
+            elif 'Password Policy:' in line:
+                value = line.split('Password Policy:')[1].strip()
+                smb_info.append({
+                    "type": "Password Policy",
+                    "value": value,
+                    "description": "Password policy information for the domain"
+                })
+            elif 'Group:' in line and 'rid:' in line:
+                # Extract group information
+                parts = line.split()
+                groupname = parts[1] if len(parts) > 1 else "Unknown"
+                rid = parts[-1] if len(parts) > 2 else "Unknown"
+                smb_info.append({
+                    "type": "Group",
+                    "value": f"{groupname} (RID: {rid})",
+                    "description": "Group account found on the target system"
+                })
+            elif 'Machine account:' in line:
+                value = line.split('Machine account:')[1].strip()
+                smb_info.append({
+                    "type": "Machine Account",
+                    "value": value,
+                    "description": "Computer account in the domain"
+                })
+        
+        return smb_info
+    
+    def _save_smb_results(self, smb_info, target):
+        """Save SMB enumeration results to JSON file."""
+        results = {
+            "timestamp": datetime.now().isoformat(),
+            "target": target,
+            "smb_info": smb_info,
+            "total_count": len(smb_info)
+        }
+        
+        output_file = os.path.join(self.vulns_path, f"smb_enum_{target}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
+        
+        try:
+            with open(output_file, 'w') as f:
+                json.dump(results, f, indent=2)
+            console.print(f"[green]✅ SMB enumeration results saved to: {output_file}[/green]")
+        except Exception as e:
+            console.print(f"[yellow]⚠️ Could not save results: {e}[/yellow]")
     
     def dns_reconnaissance(self):
         """DNS reconnaissance."""
