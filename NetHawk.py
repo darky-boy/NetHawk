@@ -1325,12 +1325,15 @@ class NetHawk:
                 vulnerabilities = self._parse_vulnerabilities(result.stdout)
                 
                 if vulnerabilities:
+                    console.print(f"\n[green]✓ Found {len(vulnerabilities)} vulnerabilities![/green]")
                     self._display_vulnerabilities_table(vulnerabilities)
                     self._save_vulnerabilities(vulnerabilities, target)
                 else:
                     console.print("[yellow]No vulnerabilities found.[/yellow]")
+                    console.print("[blue]Target appears to be secure or scan was inconclusive[/blue]")
             else:
                 console.print(f"[red]Vulnerability scan failed: {result.stderr}[/red]")
+                console.print(f"[blue]Partial output: {result.stdout[:500]}...[/blue]")
                 
         except subprocess.TimeoutExpired:
             console.print("[yellow]Vulnerability scan timed out[/yellow]")
@@ -1413,8 +1416,13 @@ class NetHawk:
             console.print("[red]nikto not found! Please install nikto.[/red]")
             return
         
-        # Get target URL
-        target_url = Prompt.ask("Enter target URL (e.g., http://192.168.1.1)")
+        # Get target URL with validation
+        while True:
+            target_url = Prompt.ask("Enter target URL (e.g., http://192.168.1.1)")
+            if target_url.startswith(('http://', 'https://')):
+                break
+            else:
+                console.print("[red]Please enter a valid URL starting with http:// or https://[/red]")
         
         console.print(f"[blue]Starting web application scan on {target_url}...[/blue]")
         
@@ -1453,6 +1461,19 @@ class NetHawk:
                 console.print(f"[green]✓ Web application scan completed![/green]")
                 console.print(f"[blue]Results saved to: {output_file}[/blue]")
                 
+                # Show partial results in terminal
+                if result.stdout:
+                    console.print(f"\n[yellow]Scan Results Preview:[/yellow]")
+                    lines = result.stdout.split('\n')[:10]  # Show first 10 lines
+                    for line in lines:
+                        if line.strip():
+                            console.print(f"[blue]{line}[/blue]")
+                    if len(result.stdout.split('\n')) > 10:
+                        console.print(f"[blue]... and {len(result.stdout.split('\n')) - 10} more lines[/blue]")
+            else:
+                console.print(f"[red]Web application scan failed: {result.stderr}[/red]")
+                console.print(f"[blue]Partial output: {result.stdout[:500]}...[/blue]")
+                
                 # Show some results if available
                 if result.stdout:
                     console.print(f"[yellow]Scan output:[/yellow]")
@@ -1478,8 +1499,14 @@ class NetHawk:
             console.print("[red]enum4linux not found! Please install enum4linux.[/red]")
             return
         
-        # Get target
-        target = Prompt.ask("Enter target IP")
+        # Get target with IP validation
+        while True:
+            target = Prompt.ask("Enter target IP")
+            try:
+                ipaddress.IPv4Address(target)
+                break
+            except ValueError:
+                console.print("[red]Please enter a valid IP address[/red]")
         
         console.print(f"[blue]Starting SMB enumeration on {target}...[/blue]")
         
@@ -1521,8 +1548,19 @@ class NetHawk:
                 
                 console.print(f"[green]✓ SMB enumeration completed![/green]")
                 console.print(f"[blue]Results saved to: {output_file}[/blue]")
+                
+                # Show partial results in terminal
+                if result.stdout:
+                    console.print(f"\n[yellow]SMB Enumeration Results Preview:[/yellow]")
+                    lines = result.stdout.split('\n')[:15]  # Show first 15 lines
+                    for line in lines:
+                        if line.strip():
+                            console.print(f"[blue]{line}[/blue]")
+                    if len(result.stdout.split('\n')) > 15:
+                        console.print(f"[blue]... and {len(result.stdout.split('\n')) - 15} more lines[/blue]")
             else:
                 console.print(f"[red]SMB enumeration failed: {result.stderr}[/red]")
+                console.print(f"[blue]Partial output: {result.stdout[:500]}...[/blue]")
                 
         except subprocess.TimeoutExpired:
             console.print("[yellow]SMB enumeration timed out[/yellow]")
@@ -1539,8 +1577,13 @@ class NetHawk:
             console.print("[red]dig not found! Please install dnsutils.[/red]")
             return
         
-        # Get target domain
-        domain = Prompt.ask("Enter target domain")
+        # Get target domain with validation
+        while True:
+            domain = Prompt.ask("Enter target domain")
+            if domain and '.' in domain and not domain.startswith('.'):
+                break
+            else:
+                console.print("[red]Please enter a valid domain (e.g., example.com)[/red]")
         
         console.print(f"[blue]Starting DNS reconnaissance on {domain}...[/blue]")
         
@@ -1585,6 +1628,19 @@ class NetHawk:
             
             console.print(f"[green]✓ DNS reconnaissance completed![/green]")
             console.print(f"[blue]Results saved to: {output_file}[/blue]")
+            
+            # Show results in terminal
+            console.print(f"\n[yellow]DNS Reconnaissance Results:[/yellow]")
+            for query_type, result in dns_results.items():
+                if result:
+                    console.print(f"[blue]{query_type}:[/blue]")
+                    lines = result.split('\n')[:5]  # Show first 5 lines
+                    for line in lines:
+                        if line.strip():
+                            console.print(f"[white]  {line}[/white]")
+                    if len(result.split('\n')) > 5:
+                        console.print(f"[white]  ... and {len(result.split('\n')) - 5} more lines[/white]")
+                    console.print()
             
         except Exception as e:
             console.print(f"[red]Error during DNS reconnaissance: {e}[/red]")
