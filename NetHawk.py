@@ -829,6 +829,9 @@ class NetHawk:
                     mac = host.get('mac', 'Unknown')
                     if mac and mac != 'Unknown':
                         console.print(f"  [green]MAC Address:[/green] {mac}")
+                    device_type = host.get('device_type', 'Unknown')
+                    if device_type and device_type != 'Unknown':
+                        console.print(f"  [green]Device Type:[/green] {device_type}")
                     if host.get('open_ports'):
                         console.print(f"  [green]Open Ports:[/green] {len(host['open_ports'])} ports")
                         for port in host['open_ports'][:5]:  # Show first 5 ports
@@ -891,10 +894,12 @@ class NetHawk:
                     
                     # Try multiple ping methods
                     if self._aggressive_ping_host(str(ip)):
+                        mac = self._get_mac_address(str(ip))
                         hosts.append({
                             "ip": str(ip),
                             "status": "up",
-                            "mac": self._get_mac_address(str(ip)),
+                            "mac": mac,
+                            "device_type": self._detect_device_type(mac),
                             "open_ports": [],
                             "os": "Unknown",
                             "services": []
@@ -927,10 +932,12 @@ class NetHawk:
                         for part in parts:
                             if '.' in part and len(part.split('.')) == 4:
                                 ip = part
+                                mac = self._get_mac_address(ip)
                                 hosts.append({
                                     "ip": ip,
                                     "status": "up",
-                                    "mac": self._get_mac_address(ip),
+                                    "mac": mac,
+                                    "device_type": self._detect_device_type(mac),
                                     "open_ports": [],
                                     "os": "Unknown",
                                     "services": []
@@ -1025,6 +1032,26 @@ class NetHawk:
         except Exception as e:
             console.print(f"[yellow]Warning: ARP lookup failed: {e}[/yellow]")
             return "Unknown"
+    
+    def _detect_device_type(self, mac_address):
+        """Detect device type based on MAC address OUI."""
+        if mac_address == "Unknown":
+            return "Unknown"
+        
+        # Get first 3 octets of MAC address
+        mac_prefix = mac_address[:8].upper()
+        
+        # Common OUI prefixes for device types
+        if mac_prefix.startswith(("00:1B:63", "00:1C:42", "00:23:12", "00:25:00", "00:26:08")):
+            return "Apple Device (iPhone/iPad/Mac)"
+        elif mac_prefix.startswith(("00:15:99", "00:16:6B", "00:17:C9", "00:18:39")):
+            return "Samsung Device (Phone/TV/Tablet)"
+        elif mac_prefix.startswith(("00:1A:11", "00:1B:44", "00:1C:42")):
+            return "Google Device (Pixel/Nest/Chromecast)"
+        elif mac_prefix.startswith(("00:50:56", "00:0C:29")):
+            return "Router/Network Device"
+        else:
+            return "Unknown Device"
     
     def _aggressive_port_scan_with_progress(self, hosts, port_range, scan_type):
         """AGGRESSIVE port scanning with real-time progress and results."""
@@ -1121,6 +1148,7 @@ class NetHawk:
         table.add_column("IP Address", style="cyan")
         table.add_column("Status", style="green")
         table.add_column("MAC Address", style="yellow")
+        table.add_column("Device Type", style="magenta")
         table.add_column("Open Ports", style="red")
         table.add_column("OS", style="blue")
         
@@ -1130,6 +1158,7 @@ class NetHawk:
                 host.get("ip", "Unknown"),
                 host.get("status", "Unknown"),
                 host.get("mac", "Unknown"),
+                host.get("device_type", "Unknown"),
                 open_ports_str,
                 host.get("os", "Unknown")
             )
