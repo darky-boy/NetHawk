@@ -2563,13 +2563,8 @@ class NetHawk:
                 if not in_answer_section or line.startswith(';'):
                     continue
                 
-                # Debug: Print what we're trying to parse
-                if line and not line.startswith(';'):
-                    console.print(f"[blue]DEBUG: Parsing line: {line}[/blue]")
-                    console.print(f"[blue]DEBUG: Query type: {query_type}, Domain: {domain}[/blue]")
-                
-                # Parse A records - look for lines like "google.com. 145 IN A 142.250.71.110"
-                if query_type == "A" and "IN A" in line and domain in line:
+                # Parse A records - look for lines like "google.com. 143 IN A 142.250.207.142"
+                if query_type == "A" and "IN A" in line:
                     parts = line.split()
                     if len(parts) >= 4 and parts[-2] == "A":
                         ip = parts[-1]
@@ -2580,7 +2575,7 @@ class NetHawk:
                                 "description": "IPv4 address mapping for the domain"
                             })
                 
-                # Parse MX records - look for lines like "google.com. 92 IN MX 10 smtp.google.com."
+                # Parse MX records - look for lines like "google.com. 23 IN MX 10 smtp.google.com."
                 elif query_type == "MX" and "IN MX" in line:
                     parts = line.split()
                     if len(parts) >= 4 and parts[-2] == "MX":
@@ -2592,7 +2587,7 @@ class NetHawk:
                             "description": "Mail exchange server for the domain"
                         })
                 
-                # Parse NS records - look for lines like "google.com. 1239 IN NS ns1.google.com."
+                # Parse NS records - look for lines like "google.com. 1034 IN NS ns2.google.com."
                 elif query_type == "NS" and "IN NS" in line:
                     parts = line.split()
                     if len(parts) >= 3 and parts[-2] == "NS":
@@ -2603,7 +2598,7 @@ class NetHawk:
                             "description": "Name server responsible for the domain"
                         })
                 
-                # Parse TXT records - look for lines like "google.com. 3600 IN TXT "cisco-ci-domain-verification=..."""
+                # Parse TXT records - look for lines like "google.com. 3600 IN TXT "apple-domain-verification=..."""
                 elif query_type == "TXT" and "IN TXT" in line:
                     # Extract TXT content - it might be quoted
                     if '"' in line:
