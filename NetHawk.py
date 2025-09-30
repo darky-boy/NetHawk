@@ -1676,24 +1676,64 @@ class NetHawk:
             self._restore_managed_mode(monitor_iface)
     
     def vulnerability_assessment(self):
-        """Perform vulnerability assessment on discovered hosts."""
-        console.print("[bold red]Vulnerability Assessment[/bold red]")
+        """Simple vulnerability assessment using nmap."""
+        console.print("[bold red]🔍 Vulnerability Assessment[/bold red]")
         console.print("=" * 50)
         
-        # Check for vulnerability scanning tools
+        # Check if nmap is available
         if not self.tools_available.get("nmap", False):
-            console.print("[red]nmap not found! Please install nmap.[/red]")
+            console.print("[red]❌ nmap not found! Please install nmap.[/red]")
+            console.print("[blue]Install: sudo apt install nmap[/blue]")
             return
         
         # Get target
-        target = Prompt.ask("Enter target IP or network")
+        console.print(f"\n[bold]🎯 Target Selection:[/bold]")
+        target = Prompt.ask("Enter target IP or network", default="")
         
-        console.print(f"[blue]Starting vulnerability assessment on {target}...[/blue]")
+        if not target:
+            console.print("[red]❌ No target specified![/red]")
+            return
+        
+        # Validate target format
+        try:
+            # Try to parse as IP or network
+            if "/" in target:
+                ipaddress.IPv4Network(target, strict=False)
+            else:
+                ipaddress.IPv4Address(target)
+        except:
+            console.print("[red]❌ Invalid IP or network format![/red]")
+            return
+        
+        console.print(f"\n[blue]🎯 Target: {target}[/blue]")
+        
+        # Scan options
+        console.print(f"\n[bold]⚙️ Scan Options:[/bold]")
+        scan_type = self.validate_input(
+            "Select scan type (1=Quick, 2=Standard, 3=Comprehensive): ",
+            ["1", "2", "3"]
+        )
+        
+        # Build nmap command based on scan type
+        if scan_type == "1":  # Quick
+            cmd = ["nmap", "-T4", "-sV", "--script", "vuln", "--script-timeout", "30s", target]
+            scan_name = "Quick Vulnerability Scan"
+            timeout = 300  # 5 minutes
+        elif scan_type == "2":  # Standard
+            cmd = ["nmap", "-T4", "-sV", "-sC", "--script", "vuln", target]
+            scan_name = "Standard Vulnerability Scan"
+            timeout = 600  # 10 minutes
+        else:  # Comprehensive
+            cmd = ["nmap", "-T3", "-sV", "-sC", "-O", "--script", "vuln", "--script-args", "unsafe=1", target]
+            scan_name = "Comprehensive Vulnerability Scan"
+            timeout = 1200  # 20 minutes
+        
+        console.print(f"\n[blue]🚀 Starting {scan_name}...[/blue]")
+        console.print(f"[yellow]This may take several minutes depending on target[/yellow]")
+        console.print(f"[blue]Running: {' '.join(cmd)}[/blue]")
         
         try:
             # Run vulnerability scan with progress
-            cmd = ["nmap", "-T4", "--script", "vuln", "-sV", target]
-            
             with Progress(
                 SpinnerColumn(),
                 TextColumn("[progress.description]{task.description}"),
@@ -1701,14 +1741,14 @@ class NetHawk:
                 TimeElapsedColumn(),
                 console=console
             ) as progress:
-                task = progress.add_task("Running vulnerability scan...", total=100)
+                task = progress.add_task(f"Scanning {target}...", total=timeout)
                 
-                # Start the scan in background
+                # Start the scan
                 process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
                 
-                # Show progress with longer timeout for vulnerability scans
-                for i in range(600):  # 10 minutes max for vulnerability scans
-                    progress.update(task, description=f"Scanning {target}... {i+1}/600s")
+                # Show progress
+                for i in range(timeout):
+                    progress.update(task, description=f"Scanning {target}... {i+1}/{timeout}s")
                     time.sleep(1)
                     
                     # Check if process finished
@@ -1718,11 +1758,13 @@ class NetHawk:
                 
                 # Get results
                 stdout, stderr = process.communicate()
-                result = type('obj', (object,), {'returncode': process.returncode, 'stdout': stdout, 'stderr': stderr})()
             
-            if result.returncode == 0:
+            # Parse and display results
+            if process.returncode == 0:
+                console.print(f"\n[green]✅ Vulnerability scan completed![/green]")
+                
                 # Parse vulnerabilities
-                vulnerabilities = self._parse_vulnerabilities(result.stdout)
+                vulnerabilities = self._parse_simple_vulnerabilities(stdout)
                 
                 if vulnerabilities:
                     console.print(f"\n[bold green]📊 VULNERABILITY ASSESSMENT RESULTS[/bold green]")
@@ -1730,49 +1772,110 @@ class NetHawk:
                     console.print(f"[green]Vulnerabilities Found: {len(vulnerabilities)}[/green]")
                     console.print(f"[yellow]Scan Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/yellow]")
                     
-                    console.print(f"\n[bold cyan]DETAILED VULNERABILITIES:[/bold cyan]")
+                    # Display vulnerabilities
+                    console.print(f"\n[bold cyan]🔍 DISCOVERED VULNERABILITIES:[/bold cyan]")
                     for i, vuln in enumerate(vulnerabilities, 1):
                         console.print(f"\n[bold]Vulnerability {i}:[/bold]")
                         console.print(f"  [red]Title:[/red] {vuln['title']}")
                         console.print(f"  [yellow]Severity:[/yellow] {vuln['severity']}")
-                        console.print(f"  [blue]Description:[/blue] {vuln['description'][:200]}...")
+                        console.print(f"  [blue]Description:[/blue] {vuln['description']}")
+                        if vuln.get('cve'):
+                            console.print(f"  [magenta]CVE:[/magenta] {vuln['cve']}")
                     
-                    console.print(f"\n[bold green]✅ Vulnerability assessment completed![/bold green]")
-                    console.print(f"[blue]Results displayed above - no files saved[/blue]")
+                    # Save results
+                    self._save_vulnerability_results(vulnerabilities, target)
+                    
                 else:
-                    console.print("[yellow]No vulnerabilities found.[/yellow]")
-                    console.print("[blue]Target appears to be secure or scan was inconclusive[/blue]")
+                    console.print(f"\n[yellow]⚠️ No vulnerabilities found.[/yellow]")
+                    console.print(f"[blue]Target appears to be secure or scan was inconclusive[/blue]")
+                    console.print(f"[yellow]Note: This doesn't guarantee the target is completely secure[/yellow]")
+                
+                # Show raw output for reference
+                if stdout:
+                    console.print(f"\n[bold cyan]📋 Raw Scan Output:[/bold cyan]")
+                    console.print(f"[dim]{stdout[:1000]}{'...' if len(stdout) > 1000 else ''}[/dim]")
+                
             else:
-                console.print(f"[red]Vulnerability scan failed: {result.stderr}[/red]")
-                console.print(f"[blue]Partial output: {result.stdout[:500]}...[/blue]")
+                console.print(f"[red]❌ Vulnerability scan failed![/red]")
+                console.print(f"[yellow]Error: {stderr[:500] if stderr else 'Unknown error'}[/yellow]")
+                if stdout:
+                    console.print(f"[blue]Partial output: {stdout[:500]}...[/blue]")
                 
         except subprocess.TimeoutExpired:
-            console.print("[yellow]Vulnerability scan timed out[/yellow]")
+            console.print(f"[yellow]⏰ Vulnerability scan timed out after {timeout} seconds[/yellow]")
         except Exception as e:
-            console.print(f"[red]Error during vulnerability assessment: {e}[/red]")
+            console.print(f"[red]❌ Error during vulnerability assessment: {e}[/red]")
+        
+        console.print(f"\n[yellow]Press Ctrl+C to stop[/yellow]")
     
-    def _parse_vulnerabilities(self, nmap_output):
-        """Parse nmap output to extract vulnerabilities."""
+    def _parse_simple_vulnerabilities(self, nmap_output):
+        """Parse nmap output to extract vulnerabilities with simple method."""
         vulnerabilities = []
         lines = nmap_output.split('\n')
         
         current_vuln = None
         for line in lines:
+            line = line.strip()
+            
+            # Look for vulnerability markers
             if 'VULNERABLE:' in line:
                 if current_vuln:
                     vulnerabilities.append(current_vuln)
+                
+                # Extract vulnerability title
+                title = line.split('VULNERABLE:')[1].strip()
                 current_vuln = {
-                    "title": line.split('VULNERABLE:')[1].strip(),
+                    "title": title,
                     "description": "",
-                    "severity": "Unknown"
+                    "severity": "Unknown",
+                    "cve": ""
                 }
-            elif current_vuln and line.strip():
-                current_vuln["description"] += line.strip() + " "
+                
+                # Try to extract CVE if present
+                if 'CVE-' in title:
+                    cve_match = re.search(r'CVE-\d{4}-\d+', title)
+                    if cve_match:
+                        current_vuln["cve"] = cve_match.group()
+                
+                # Determine severity based on keywords
+                title_lower = title.lower()
+                if any(word in title_lower for word in ['critical', 'remote code execution', 'rce']):
+                    current_vuln["severity"] = "Critical"
+                elif any(word in title_lower for word in ['high', 'buffer overflow', 'sql injection']):
+                    current_vuln["severity"] = "High"
+                elif any(word in title_lower for word in ['medium', 'information disclosure']):
+                    current_vuln["severity"] = "Medium"
+                elif any(word in title_lower for word in ['low', 'info']):
+                    current_vuln["severity"] = "Low"
+                else:
+                    current_vuln["severity"] = "Unknown"
+                    
+            elif current_vuln and line and not line.startswith('|') and not line.startswith('+'):
+                # Add to description
+                current_vuln["description"] += line + " "
         
         if current_vuln:
             vulnerabilities.append(current_vuln)
         
         return vulnerabilities
+    
+    def _save_vulnerability_results(self, vulnerabilities, target):
+        """Save vulnerability results to JSON file."""
+        results = {
+            "timestamp": datetime.now().isoformat(),
+            "target": target,
+            "vulnerabilities": vulnerabilities,
+            "total_count": len(vulnerabilities)
+        }
+        
+        output_file = os.path.join(self.vulns_path, f"vulnerabilities_{target.replace('/', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
+        
+        try:
+            with open(output_file, 'w') as f:
+                json.dump(results, f, indent=2)
+            console.print(f"[green]✅ Vulnerabilities saved to: {output_file}[/green]")
+        except Exception as e:
+            console.print(f"[yellow]⚠️ Could not save results: {e}[/yellow]")
     
     def _display_vulnerabilities_table(self, vulnerabilities):
         """Display vulnerabilities in a table."""
