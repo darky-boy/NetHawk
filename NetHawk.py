@@ -779,6 +779,12 @@ class NetHawk:
                     self._aggressive_port_scan_with_progress(hosts, port_range, scan_type)
                 
                 self._save_aggressive_active_results(hosts, target)
+                
+                # Show where results are stored
+                console.print(f"\n[bold yellow]📂 Active Scan Results Location:[/bold yellow]")
+                console.print(f"[blue]Session: {self.session_path}[/blue]")
+                console.print(f"[blue]Logs: {self.logs_path}[/blue]")
+                console.print(f"[green]Look for files starting with 'aggressive_active_'[/green]")
             else:
                 console.print("[yellow]No active hosts found.[/yellow]")
                 console.print("[blue]Try scanning a different network or check your network connection[/blue]")
@@ -1102,7 +1108,16 @@ class NetHawk:
         }
         
         output_file = os.path.join(self.logs_path, f"aggressive_active_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
+        
+        # Debug: Show paths
+        console.print(f"[blue]Debug: Session path: {self.session_path}[/blue]")
+        console.print(f"[blue]Debug: Logs path: {self.logs_path}[/blue]")
+        console.print(f"[blue]Debug: Output file: {output_file}[/blue]")
+        
         try:
+            # Ensure directory exists
+            os.makedirs(self.logs_path, exist_ok=True)
+            
             with open(output_file, 'w') as f:
                 json.dump(results, f, indent=2)
             console.print(f"[green]✓ AGGRESSIVE results saved to: {output_file}[/green]")
