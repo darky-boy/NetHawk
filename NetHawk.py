@@ -1069,20 +1069,20 @@ class NetHawk:
                     cmd = ["nmap", "-T4", "-A", "-sV", "-sC", "-O", "--script", "vuln,discovery", host["ip"]]
                 
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-            
-            if result.returncode == 0:
+                
+                if result.returncode == 0:
                     # Parse open ports
                     open_ports = self._parse_nmap_output(result.stdout)
                     host["open_ports"] = open_ports
                     host["nmap_output"] = result.stdout
                     
                     console.print(f"[green]✓ Found {len(open_ports)} open ports on {host['ip']}[/green]")
-            else:
+                else:
                     console.print(f"[red]Port scan failed for {host['ip']}[/red]")
                     
             except subprocess.TimeoutExpired:
                 console.print(f"[yellow]Port scan timed out for {host['ip']}[/yellow]")
-        except Exception as e:
+            except Exception as e:
                 console.print(f"[red]Error scanning {host['ip']}: {e}[/red]")
     
     def _parse_nmap_output(self, nmap_output):
