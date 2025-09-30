@@ -766,23 +766,78 @@ class NetHawk:
                 progress.update(task, description="Preparing network scan...")
                 progress.advance(task)
             
-            # Perform AGGRESSIVE scan
-            hosts = self._aggressive_host_discovery(network)
+            # Perform AGGRESSIVE scan with real-time progress
+            console.print(f"\n[bold blue]🔍 Starting AGGRESSIVE Network Discovery...[/bold blue]")
+            console.print(f"[yellow]This may take 2-5 minutes depending on network size[/yellow]")
+            console.print(f"[blue]Scanning {network} for active hosts...[/blue]")
+            
+            hosts = self._aggressive_host_discovery_with_progress(network)
             
             if hosts:
+                console.print(f"\n[green]✓ Found {len(hosts)} active hosts![/green]")
                 self._display_aggressive_hosts_table(hosts)
                 
                 # Port scan discovered hosts
                 if Confirm.ask("Perform AGGRESSIVE port scanning on discovered hosts?"):
-                    self._aggressive_port_scan(hosts, port_range, scan_type)
+                    console.print(f"\n[bold blue]🔍 Starting AGGRESSIVE Port Scanning...[/bold blue]")
+                    console.print(f"[yellow]This may take 5-15 minutes depending on number of hosts[/yellow]")
+                    self._aggressive_port_scan_with_progress(hosts, port_range, scan_type)
                 
                 self._save_aggressive_active_results(hosts, target)
             else:
                 console.print("[yellow]No active hosts found.[/yellow]")
+                console.print("[blue]Try scanning a different network or check your network connection[/blue]")
                 
         except Exception as e:
             console.print(f"[red]Invalid network format: {e}[/red]")
     
+    def _aggressive_host_discovery_with_progress(self, network):
+        """AGGRESSIVE host discovery with real-time progress and results."""
+        hosts = []
+        
+        # Calculate total IPs to scan
+        total_ips = network.num_addresses
+        if total_ips > 254:  # Limit for /24 networks
+            total_ips = 254
+        
+        console.print(f"[blue]Scanning {total_ips} IP addresses...[/blue]")
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TimeElapsedColumn(),
+            console=console
+        ) as progress:
+            task = progress.add_task("Discovering hosts...", total=total_ips)
+            
+            # Scan each IP with progress updates
+            for i, ip in enumerate(network.hosts()):
+                if i >= 254:  # Limit to /24
+                    break
+                
+                progress.update(task, description=f"Scanning {ip}... ({i+1}/{total_ips})")
+                
+                # Ping the host
+                if self._ping_host(str(ip)):
+                    hosts.append({
+                        "ip": str(ip),
+                        "status": "up",
+                        "open_ports": [],
+                        "os": "Unknown",
+                        "services": []
+                    })
+                    console.print(f"[green]✓ Found host: {ip}[/green]")
+                
+                # Update progress every 10 IPs
+                if i % 10 == 0:
+                    progress.update(task, completed=i+1)
+            
+            progress.update(task, description="Host discovery complete!")
+            progress.update(task, completed=total_ips)
+        
+        return hosts
+
     def _aggressive_host_discovery(self, network):
         """Perform AGGRESSIVE host discovery."""
         hosts = []
@@ -833,6 +888,43 @@ class NetHawk:
         except Exception:
             return False
     
+    def _aggressive_port_scan_with_progress(self, hosts, port_range, scan_type):
+        """AGGRESSIVE port scanning with real-time progress and results."""
+        total_hosts = len(hosts)
+        console.print(f"[blue]Port scanning {total_hosts} hosts...[/blue]")
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TimeElapsedColumn(),
+            console=console
+        ) as progress:
+            task = progress.add_task("Port scanning hosts...", total=total_hosts)
+            
+            for i, host in enumerate(hosts):
+                progress.update(task, description=f"Scanning {host['ip']}... ({i+1}/{total_hosts})")
+                
+                # Perform port scan on this host
+                open_ports = self._scan_host_ports(host['ip'], port_range, scan_type)
+                host['open_ports'] = open_ports
+                
+                if open_ports:
+                    console.print(f"[green]✓ {host['ip']}: {len(open_ports)} open ports[/green]")
+                    for port in open_ports[:5]:  # Show first 5 ports
+                        console.print(f"[blue]  - Port {port['port']}: {port['service']}[/blue]")
+                    if len(open_ports) > 5:
+                        console.print(f"[blue]  - ... and {len(open_ports)-5} more ports[/blue]")
+                else:
+                    console.print(f"[yellow]  {host['ip']}: No open ports found[/yellow]")
+                
+                progress.advance(task)
+            
+            progress.update(task, description="Port scanning complete!")
+        
+        # Display final results
+        self._display_aggressive_hosts_table(hosts)
+
     def _aggressive_port_scan(self, hosts, port_range, scan_type):
         """Perform AGGRESSIVE port scanning."""
         console.print(f"[blue]Starting AGGRESSIVE port scan...[/blue]")
@@ -1584,6 +1676,51 @@ class NetHawk:
             console.print("\n[yellow]Operation cancelled by user.[/yellow]")
         except Exception as e:
             console.print(f"\n[red]Unexpected error: {e}[/red]")
+
+    def _scan_host_ports(self, ip, port_range, scan_type):
+        """Scan ports on a single host."""
+        try:
+            # Use nmap for port scanning
+            if scan_type == "fast":
+                cmd = ["nmap", "-T4", "-F", ip]
+            elif scan_type == "aggressive":
+                cmd = ["nmap", "-T4", "-A", ip]
+            else:  # comprehensive
+                cmd = ["nmap", "-T4", "-sS", "-sV", "-O", ip]
+            
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            
+            if result.returncode == 0:
+                return self._parse_nmap_output(result.stdout)
+            else:
+                return []
+                
+        except Exception:
+            return []
+    
+    def _parse_nmap_output(self, nmap_output):
+        """Parse nmap output to extract open ports."""
+        ports = []
+        lines = nmap_output.split('\n')
+        
+        for line in lines:
+            if '/tcp' in line and 'open' in line:
+                parts = line.split()
+                if len(parts) >= 3:
+                    port_info = parts[0].split('/')
+                    if len(port_info) == 2:
+                        port = port_info[0]
+                        protocol = port_info[1]
+                        service = parts[2] if len(parts) > 2 else "unknown"
+                        
+                        ports.append({
+                            "port": int(port),
+                            "protocol": protocol,
+                            "service": service,
+                            "state": "open"
+                        })
+        
+        return ports
 
 def main():
     """Main entry point."""
