@@ -331,11 +331,32 @@ class NetHawk:
                             console.print(f"[blue]5. Try a different interface if available[/blue]")
                             console.print(f"[blue]6. Check if your WiFi adapter supports monitor mode[/blue]")
                             
+                            # Manual commands section
+                            console.print(f"\n[yellow]If your adapter supports monitor mode but it still shows this error, then try it manually:[/yellow]")
+                            console.print(f"[green]Manual Commands to Set Monitor Mode:[/green]")
+                            console.print(f"[blue]1. sudo airmon-ng check kill[/blue]")
+                            console.print(f"[blue]2. sudo airmon-ng start {iface}[/blue]")
+                            console.print(f"[blue]3. OR: sudo iw {iface} set type monitor[/blue]")
+                            console.print(f"[blue]4. OR: sudo iwconfig {iface} mode monitor[/blue]")
+                            console.print(f"[blue]5. Check result: iwconfig[/blue]")
+                            console.print(f"[blue]6. Then run: sudo python3 NetHawk.py[/blue]")
+                            
                             return None
                 
         except Exception as e:
             console.print(f"[red]Error setting monitor mode: {e}[/red]")
             console.print(f"[blue]Try running as root: sudo python3 NetHawk.py[/blue]")
+            
+            # Manual commands section
+            console.print(f"\n[yellow]If your adapter supports monitor mode but it still shows this error, then try it manually:[/yellow]")
+            console.print(f"[green]Manual Commands to Set Monitor Mode:[/green]")
+            console.print(f"[blue]1. sudo airmon-ng check kill[/blue]")
+            console.print(f"[blue]2. sudo airmon-ng start {iface}[/blue]")
+            console.print(f"[blue]3. OR: sudo iw {iface} set type monitor[/blue]")
+            console.print(f"[blue]4. OR: sudo iwconfig {iface} mode monitor[/blue]")
+            console.print(f"[blue]5. Check result: iwconfig[/blue]")
+            console.print(f"[blue]6. Then run: sudo python3 NetHawk.py[/blue]")
+            
             return None
     
     def _restore_managed_mode(self, iface):
