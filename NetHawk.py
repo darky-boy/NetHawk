@@ -1491,13 +1491,13 @@ class NetHawk:
             output_file = os.path.join(self.vulns_path, f"nikto_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
             cmd = ["nikto", "-h", target_url, "-Format", "json", "-output", output_file]
         
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            TimeElapsedColumn(),
-            console=console
-        ) as progress:
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TimeElapsedColumn(),
+                console=console
+            ) as progress:
                 task = progress.add_task("Scanning web application...", total=100)
                 
                 # Start nikto in background
