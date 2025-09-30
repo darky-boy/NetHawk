@@ -450,7 +450,7 @@ class NetHawk:
             console.print(f"[yellow]Note: We'll try multiple methods to enable monitor mode[/yellow]")
             monitor_iface = self._set_monitor_mode(iface)
             if not monitor_iface:
-            return
+                return
 
         # Configure scan options
         console.print("\n[bold]AGGRESSIVE Scan Options:[/bold]")
