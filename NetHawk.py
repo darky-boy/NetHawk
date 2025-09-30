@@ -2217,7 +2217,8 @@ class NetHawk:
                 stdout, stderr = process.communicate()
             
             # Parse and display results
-            if process.returncode == 0:
+            # Check if we got any useful output even if returncode != 0
+            if stdout and ("Target Information" in stdout or "Username" in stdout or "Share" in stdout or "Domain" in stdout):
                 console.print(f"\n[green]✅ SMB enumeration completed![/green]")
                 
                 # Parse SMB information
@@ -2255,6 +2256,17 @@ class NetHawk:
                 console.print(f"[yellow]Error: {stderr[:500] if stderr else 'Unknown error'}[/yellow]")
                 if stdout:
                     console.print(f"[blue]Partial output: {stdout[:500]}...[/blue]")
+                
+                # Check for specific enum4linux error patterns
+                if "Connection refused" in stderr or "Connection refused" in stdout:
+                    console.print(f"\n[yellow]💡 Tip: Connection refused. Check if the target has SMB services running.[/yellow]")
+                    console.print(f"[blue]Try: nmap -p 445,139 {target}[/blue]")
+                elif "timeout" in stderr.lower() or "timeout" in stdout.lower():
+                    console.print(f"\n[yellow]💡 Tip: Timeout occurred. The target may be slow to respond.[/yellow]")
+                    console.print(f"[blue]Try using a Quick scan instead of Comprehensive.[/blue]")
+                elif "No shares found" in stdout or "No users found" in stdout:
+                    console.print(f"\n[yellow]💡 Tip: No SMB information found. Target may not have SMB services.[/yellow]")
+                    console.print(f"[blue]This is normal for non-Windows targets or secured systems.[/blue]")
                 
         except subprocess.TimeoutExpired:
             console.print(f"[yellow]⏰ SMB enumeration timed out after {timeout} seconds[/yellow]")
@@ -2335,6 +2347,33 @@ class NetHawk:
                     "value": value,
                     "description": "Computer account in the domain"
                 })
+            elif 'Known Usernames' in line:
+                # Extract known usernames
+                value = line.split('Known Usernames')[1].strip().lstrip('..').strip()
+                if value:
+                    smb_info.append({
+                        "type": "Known Usernames",
+                        "value": value,
+                        "description": "Common usernames found during enumeration"
+                    })
+            elif 'RID Range' in line:
+                # Extract RID range
+                value = line.split('RID Range')[1].strip().lstrip('..').strip()
+                if value:
+                    smb_info.append({
+                        "type": "RID Range",
+                        "value": value,
+                        "description": "Relative Identifier range for enumeration"
+                    })
+            elif 'Target' in line and '127.0.0.1' in line or '192.168.' in line or '10.' in line:
+                # Extract target information
+                value = line.split('Target')[1].strip().lstrip('..').strip()
+                if value:
+                    smb_info.append({
+                        "type": "Target Information",
+                        "value": value,
+                        "description": "Target system information"
+                    })
         
         return smb_info
     
