@@ -780,6 +780,7 @@ class NetHawk:
 
         try:
             console.print(f"[blue]AGGRESSIVE scanning network: {network_string}[/blue]")
+            console.print(f"[blue]Debug: About to start scan with network_string = '{network_string}'[/blue]")
             
             # Get scan options
             console.print("\n[bold]AGGRESSIVE Scan Options:[/bold]")
@@ -843,7 +844,8 @@ class NetHawk:
                 console.print("[blue]Try scanning a different network or check your network connection[/blue]")
                 
         except Exception as e:
-            console.print(f"[red]Invalid network format: {e}[/red]")
+            console.print(f"[red]Error during active scan: {e}[/red]")
+            console.print(f"[red]Error type: {type(e).__name__}[/red]")
     
     def _aggressive_host_discovery_with_progress(self, network):
         """AGGRESSIVE host discovery with real-time progress and results."""
