@@ -1846,14 +1846,39 @@ class NetHawk:
     def _scan_host_ports(self, ip, port_range, scan_type):
         """Scan ports on a single host."""
         try:
-            # Use nmap for port scanning
+            # Build nmap command based on scan type and port range
             if scan_type == "fast":
-                cmd = ["nmap", "-T4", "-F", ip]
+                if port_range == "all":
+                    cmd = ["nmap", "-T4", "-p", "1-65535", ip]
+                elif port_range.startswith("top"):
+                    top_ports = port_range.replace("top", "")
+                    cmd = ["nmap", "-T4", "--top-ports", top_ports, ip]
+                elif "-" in port_range:
+                    cmd = ["nmap", "-T4", "-p", port_range, ip]
+                else:
+                    cmd = ["nmap", "-T4", "-F", ip]  # Default fast scan
             elif scan_type == "aggressive":
-                cmd = ["nmap", "-T4", "-A", ip]
+                if port_range == "all":
+                    cmd = ["nmap", "-T4", "-A", "-sV", "-sC", "-p", "1-65535", ip]
+                elif port_range.startswith("top"):
+                    top_ports = port_range.replace("top", "")
+                    cmd = ["nmap", "-T4", "-A", "-sV", "-sC", "--top-ports", top_ports, ip]
+                elif "-" in port_range:
+                    cmd = ["nmap", "-T4", "-A", "-sV", "-sC", "-p", port_range, ip]
+                else:
+                    cmd = ["nmap", "-T4", "-A", "-sV", "-sC", ip]  # Default aggressive scan
             else:  # comprehensive
-                cmd = ["nmap", "-T4", "-sS", "-sV", "-O", ip]
+                if port_range == "all":
+                    cmd = ["nmap", "-T4", "-sS", "-sV", "-O", "-p", "1-65535", ip]
+                elif port_range.startswith("top"):
+                    top_ports = port_range.replace("top", "")
+                    cmd = ["nmap", "-T4", "-sS", "-sV", "-O", "--top-ports", top_ports, ip]
+                elif "-" in port_range:
+                    cmd = ["nmap", "-T4", "-sS", "-sV", "-O", "-p", port_range, ip]
+                else:
+                    cmd = ["nmap", "-T4", "-sS", "-sV", "-O", ip]  # Default comprehensive scan
             
+            console.print(f"[blue]Running: {' '.join(cmd)}[/blue]")
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
             
             if result.returncode == 0:
