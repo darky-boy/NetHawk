@@ -1744,7 +1744,7 @@ class NetHawk:
                 if vuln_files:
                     for vuln_file in vuln_files:
                         f.write(f"Vulnerability Report: {vuln_file}\n")
-                        else:
+                else:
                     f.write("No vulnerability reports generated.\n")
                 f.write("\n")
                 
