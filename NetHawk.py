@@ -1804,8 +1804,8 @@ class NetHawk:
                     console.print(f"\n[bold red]🚀 LAUNCHING DEAUTH ATTACK[/bold red]")
                     
                     if target_client:
-                    console.print(f"[red]Targeting specific client: {target_client['mac']}[/red]")
-                    console.print(f"[red]Sending {deauth_count} deauthentication packets to {target_client['mac']}...[/red]")
+                        console.print(f"[red]Targeting specific client: {target_client['mac']}[/red]")
+                        console.print(f"[red]Sending {deauth_count} deauthentication packets to {target_client['mac']}...[/red]")
                     
                     deauth_cmd = [
                         "aireplay-ng", 
@@ -1835,11 +1835,11 @@ class NetHawk:
                 # Wait for deauth to complete
                 time.sleep(2)
                 console.print(f"[green]✓ Deauth attack completed[/green]")
-            
-            # Enhanced progress tracking
-            console.print(f"\n[bold blue]📊 CAPTURE PROGRESS[/bold blue]")
-            
-            with Progress(
+                
+                # Enhanced progress tracking
+                console.print(f"\n[bold blue]📊 CAPTURE PROGRESS[/bold blue]")
+                
+                with Progress(
                 SpinnerColumn(),
                 TextColumn("[progress.description]{task.description}"),
                 BarColumn(),
