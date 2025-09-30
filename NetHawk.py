@@ -1246,12 +1246,12 @@ class NetHawk:
         # Legal warning
         if not Confirm.ask("[bold red]WARNING: Only capture handshakes from networks you own or have permission to test! Continue?[/bold red]"):
             console.print("[yellow]Operation cancelled.[/yellow]")
-                return
+            return
                 
         # Set monitor mode
         monitor_iface = self._set_monitor_mode(iface)
         if not monitor_iface:
-                return
+            return
         
         # Advanced capture options
         console.print("\n[bold]Advanced Capture Options:[/bold]")
