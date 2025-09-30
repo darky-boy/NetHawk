@@ -424,6 +424,62 @@ class NetHawk:
         
         return True
     
+    def passive_wifi_scan(self):
+        """Basic passive WiFi scanning."""
+        console.print("[bold red]Passive WiFi Scan[/bold red]")
+        console.print("=" * 50)
+
+        # Check if airodump-ng is available
+        if not self.tools_available.get("airodump-ng", False):
+            console.print("[red]airodump-ng not found! Please install aircrack-ng.[/red]")
+            return
+
+        # Get wireless interface
+        interfaces = self._get_wireless_interfaces()
+        if not interfaces:
+            console.print("[red]No wireless interfaces found![/red]")
+            return
+
+        console.print("[bold]Available interfaces:[/bold]")
+        for i, iface in enumerate(interfaces):
+            console.print(f"{i+1}. {iface}")
+
+        iface_choice = self.validate_input(
+            "\nSelect interface to use: ", [str(i+1) for i in range(len(interfaces))]
+        )
+        iface = interfaces[int(iface_choice)-1]
+        
+        # Set monitor mode
+        monitor_iface = self._set_monitor_mode(iface)
+        if not monitor_iface:
+            return
+
+        # Start passive scan
+        console.print(f"[blue]Starting passive WiFi scan on {monitor_iface}...[/blue]")
+        console.print("[yellow]Press Ctrl+C to stop scan[/yellow]")
+        
+        try:
+            # Run airodump-ng for passive scanning
+            cmd = ["airodump-ng", "-w", f"{self.session_path}/passive_scan", monitor_iface]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            
+            if result.returncode == 0:
+                console.print(f"[green]SUCCESS[/green] Passive scan completed")
+                console.print(f"[blue]Results saved to: {self.session_path}/passive_scan-01.csv[/blue]")
+            else:
+                console.print(f"[yellow]Scan completed with warnings[/yellow]")
+                console.print(result.stderr)
+                
+        except subprocess.TimeoutExpired:
+            console.print(f"[yellow]Scan timed out[/yellow]")
+        except KeyboardInterrupt:
+            console.print(f"\n[yellow]Scan stopped by user[/yellow]")
+        except Exception as e:
+            console.print(f"[red]Error during passive scan: {e}[/red]")
+        finally:
+            # Restore managed mode
+            self._restore_managed_mode(monitor_iface)
+    
     def aggressive_passive_scan(self):
         """AGGRESSIVE passive WiFi scanning with extended duration and multiple channels."""
         console.print("[bold red]AGGRESSIVE Passive WiFi Scan[/bold red]")
