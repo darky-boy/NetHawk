@@ -177,7 +177,7 @@ class NetHawk:
             try:
                 choice = Prompt.ask(prompt)
                 if choice in choices:
-                    return choice
+                return choice
                 else:
                     console.print("[red]Please enter a valid option.[/red]")
             except KeyboardInterrupt:
@@ -229,8 +229,8 @@ class NetHawk:
             # Check current mode
             if "monitor" in result.stdout.lower():
                 console.print(f"[green]✓ {iface} is already in monitor mode[/green]")
-                return True
-            
+            return True
+    
             # Try to set monitor mode to test if it's supported
             console.print(f"[blue]Testing monitor mode capability...[/blue]")
             test_result = subprocess.run(["iw", iface, "set", "type", "monitor"], 
@@ -393,7 +393,7 @@ class NetHawk:
         except Exception as e:
             console.print(f"[red]❌ Error checking interface: {e}[/red]")
             return False
-        
+
         # Check for conflicting processes
         try:
             result = subprocess.run(["airmon-ng", "check"], capture_output=True, text=True, timeout=5)
@@ -412,22 +412,22 @@ class NetHawk:
         """AGGRESSIVE passive WiFi scanning with extended duration and multiple channels."""
         console.print("[bold red]AGGRESSIVE Passive WiFi Scan[/bold red]")
         console.print("=" * 50)
-        
+
         # Check if airodump-ng is available
         if not self.tools_available.get("airodump-ng", False):
             console.print("[red]airodump-ng not found! Please install aircrack-ng.[/red]")
             return
-        
+
         # Get wireless interface
         interfaces = self._get_wireless_interfaces()
         if not interfaces:
             console.print("[red]No wireless interfaces found![/red]")
             return
-        
+
         console.print("[bold]Available interfaces:[/bold]")
         for i, iface in enumerate(interfaces):
             console.print(f"{i+1}. {iface}")
-        
+
         iface_choice = self.validate_input(
             "\nSelect interface to use: ", [str(i+1) for i in range(len(interfaces))]
         )
@@ -450,8 +450,8 @@ class NetHawk:
             console.print(f"[yellow]Note: We'll try multiple methods to enable monitor mode[/yellow]")
             monitor_iface = self._set_monitor_mode(iface)
             if not monitor_iface:
-                return
-        
+            return
+
         # Configure scan options
         console.print("\n[bold]AGGRESSIVE Scan Options:[/bold]")
         channels = Prompt.ask("Channels to scan (e.g., 1,6,11 or all)", default="all")
@@ -478,11 +478,11 @@ class NetHawk:
             # Start the scan process
             try:
                 process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, text=True)
-            except FileNotFoundError:
+        except FileNotFoundError:
                 console.print(f"[red]Error: 'airodump-ng' command not found![/red]")
                 console.print(f"[blue]Please install aircrack-ng package: sudo apt install aircrack-ng[/blue]")
-                return
-            
+            return
+
             # Real-time network discovery
             console.print(f"[blue]🔍 Scanning for networks...[/blue]")
             console.print(f"[yellow]Found networks will appear below:[/yellow]")
@@ -617,7 +617,7 @@ class NetHawk:
                     elif "Station MAC" in row[0]:
                         section = "CLIENT"
                         continue
-                    
+
                     if section == "AP" and len(row) >= 14:
                         try:
                             ap_data = {
@@ -676,8 +676,8 @@ class NetHawk:
                 ap["Beacons"]
             )
         
-        console.print(table)
-    
+            console.print(table)
+
     def _display_aggressive_client_table(self, clients):
         """Display clients in an enhanced table."""
         table = Table(title="AGGRESSIVE Scan - Clients")
@@ -694,14 +694,14 @@ class NetHawk:
                 client["Probed"]
             )
         
-        console.print(table)
-    
+            console.print(table)
+
     
     def aggressive_active_scan(self):
         """AGGRESSIVE active network scanning with port scanning and service detection."""
         console.print("[bold red]AGGRESSIVE Active Network Scan[/bold red]")
         console.print("=" * 50)
-        
+
         # Auto-detect current network
         console.print(f"[blue]Auto-detecting your current network...[/blue]")
         target = self._get_current_network()
@@ -771,7 +771,7 @@ class NetHawk:
             console.print(f"[red]Invalid network format: {e}[/red]")
             console.print(f"[red]Network string was: '{network_string}'[/red]")
             return
-        
+
         try:
             console.print(f"[blue]AGGRESSIVE scanning network: {network_string}[/blue]")
             
@@ -832,9 +832,9 @@ class NetHawk:
             
             console.print(f"\n[bold green]✅ Active scan completed successfully![/bold green]")
             console.print(f"[blue]Results displayed above - no files saved[/blue]")
-        else:
-            console.print("[yellow]No active hosts found.[/yellow]")
-            console.print("[blue]Try scanning a different network or check your network connection[/blue]")
+            else:
+                console.print("[yellow]No active hosts found.[/yellow]")
+                console.print("[blue]Try scanning a different network or check your network connection[/blue]")
                 
         except Exception as e:
             console.print(f"[red]Invalid network format: {e}[/red]")
@@ -872,8 +872,8 @@ class NetHawk:
                 console.print(f"[blue]Trying individual ping scans...[/blue]")
                 for i, ip in enumerate(network.hosts()):
                     if i >= 254:  # Limit to /24
-                        break
-                    
+                break
+        
                     progress.update(task, description=f"Ping scanning {ip}... ({i+1}/{total_ips})")
                     
                     # Skip if already found by nmap
@@ -1069,20 +1069,20 @@ class NetHawk:
                     cmd = ["nmap", "-T4", "-A", "-sV", "-sC", "-O", "--script", "vuln,discovery", host["ip"]]
                 
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-                
-                if result.returncode == 0:
+            
+            if result.returncode == 0:
                     # Parse open ports
                     open_ports = self._parse_nmap_output(result.stdout)
                     host["open_ports"] = open_ports
                     host["nmap_output"] = result.stdout
                     
                     console.print(f"[green]✓ Found {len(open_ports)} open ports on {host['ip']}[/green]")
-                else:
+            else:
                     console.print(f"[red]Port scan failed for {host['ip']}[/red]")
                     
             except subprocess.TimeoutExpired:
                 console.print(f"[yellow]Port scan timed out for {host['ip']}[/yellow]")
-            except Exception as e:
+        except Exception as e:
                 console.print(f"[red]Error scanning {host['ip']}: {e}[/red]")
     
     def _parse_nmap_output(self, nmap_output):
@@ -1210,18 +1210,18 @@ class NetHawk:
         """Advanced handshake capture with deauth attacks."""
         console.print("[bold red]Advanced Handshake Capture + Deauth[/bold red]")
         console.print("=" * 50)
-        
+
         # Check if airodump-ng is available
         if not self.tools_available.get("airodump-ng", False):
             console.print("[red]airodump-ng not found! Please install aircrack-ng.[/red]")
             return
-        
+
         # Get wireless interface
         interfaces = self._get_wireless_interfaces()
         if not interfaces:
             console.print("[red]No wireless interfaces found![/red]")
             return
-        
+
         console.print("[bold]Available interfaces:[/bold]")
         for i, iface in enumerate(interfaces):
             console.print(f"{i+1}. {iface}")
@@ -1239,19 +1239,19 @@ class NetHawk:
         # Validate BSSID format
         if not re.match(r'^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$', bssid):
             console.print("[red]Invalid BSSID format! Use format: XX:XX:XX:XX:XX:XX[/red]")
-            return
-        
+                return
+            
         console.print(f"[blue]Target: {essid} ({bssid}) on channel {channel}[/blue]")
         
         # Legal warning
         if not Confirm.ask("[bold red]WARNING: Only capture handshakes from networks you own or have permission to test! Continue?[/bold red]"):
             console.print("[yellow]Operation cancelled.[/yellow]")
-            return
-        
+                return
+                
         # Set monitor mode
         monitor_iface = self._set_monitor_mode(iface)
         if not monitor_iface:
-            return
+                return
         
         # Advanced capture options
         console.print("\n[bold]Advanced Capture Options:[/bold]")
@@ -1280,13 +1280,13 @@ class NetHawk:
                 deauth_process = subprocess.Popen(deauth_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             
             # Show progress for handshake capture
-            with Progress(
-                SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                BarColumn(),
-                TimeElapsedColumn(),
-                console=console
-            ) as progress:
+                    with Progress(
+                        SpinnerColumn(),
+                        TextColumn("[progress.description]{task.description}"),
+                        BarColumn(),
+                        TimeElapsedColumn(),
+                        console=console
+                    ) as progress:
                 task = progress.add_task("Capturing handshake...", total=30)
                 
                 for i in range(30):
@@ -1318,7 +1318,7 @@ class NetHawk:
             
         except KeyboardInterrupt:
             console.print("\n[yellow]Capture stopped by user.[/yellow]")
-        except Exception as e:
+                except Exception as e:
             console.print(f"[red]Error during advanced capture: {e}[/red]")
         finally:
             # Restore managed mode
@@ -1406,7 +1406,7 @@ class NetHawk:
         lines = nmap_output.split('\n')
         
         current_vuln = None
-        for line in lines:
+                for line in lines:
             if 'VULNERABLE:' in line:
                 if current_vuln:
                     vulnerabilities.append(current_vuln)
@@ -1490,14 +1490,14 @@ class NetHawk:
             # Run nikto scan with progress
             output_file = os.path.join(self.vulns_path, f"nikto_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
             cmd = ["nikto", "-h", target_url, "-Format", "json", "-output", output_file]
-            
-            with Progress(
-                SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                BarColumn(),
-                TimeElapsedColumn(),
-                console=console
-            ) as progress:
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TimeElapsedColumn(),
+            console=console
+        ) as progress:
                 task = progress.add_task("Scanning web application...", total=100)
                 
                 # Start nikto in background
@@ -1636,7 +1636,7 @@ class NetHawk:
             domain = Prompt.ask("Enter target domain")
             if domain and '.' in domain and not domain.startswith('.'):
                 break
-            else:
+        else:
                 console.print("[red]Please enter a valid domain (e.g., example.com)[/red]")
         
         console.print(f"[blue]Starting DNS reconnaissance on {domain}...[/blue]")
@@ -1745,7 +1745,7 @@ class NetHawk:
                 if vuln_files:
                     for vuln_file in vuln_files:
                         f.write(f"Vulnerability Report: {vuln_file}\n")
-                else:
+                        else:
                     f.write("No vulnerability reports generated.\n")
                 f.write("\n")
                 
