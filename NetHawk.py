@@ -2563,7 +2563,7 @@ class NetHawk:
                 if not in_answer_section or line.startswith(';'):
                     continue
                 
-                # Parse A records
+                # Parse A records - look for lines like "google.com. 145 IN A 142.250.71.110"
                 if query_type == "A" and "IN A" in line and domain in line:
                     parts = line.split()
                     if len(parts) >= 4 and parts[-2] == "A":
@@ -2575,7 +2575,7 @@ class NetHawk:
                                 "description": "IPv4 address mapping for the domain"
                             })
                 
-                # Parse MX records
+                # Parse MX records - look for lines like "google.com. 92 IN MX 10 smtp.google.com."
                 elif query_type == "MX" and "IN MX" in line:
                     parts = line.split()
                     if len(parts) >= 4 and parts[-2] == "MX":
@@ -2587,7 +2587,7 @@ class NetHawk:
                             "description": "Mail exchange server for the domain"
                         })
                 
-                # Parse NS records
+                # Parse NS records - look for lines like "google.com. 1239 IN NS ns1.google.com."
                 elif query_type == "NS" and "IN NS" in line:
                     parts = line.split()
                     if len(parts) >= 3 and parts[-2] == "NS":
@@ -2598,7 +2598,7 @@ class NetHawk:
                             "description": "Name server responsible for the domain"
                         })
                 
-                # Parse TXT records
+                # Parse TXT records - look for lines like "google.com. 3600 IN TXT "cisco-ci-domain-verification=..."""
                 elif query_type == "TXT" and "IN TXT" in line:
                     # Extract TXT content - it might be quoted
                     if '"' in line:
@@ -2624,7 +2624,7 @@ class NetHawk:
                                     "description": "Text record (may contain SPF, DKIM, or other info)"
                                 })
                 
-                # Parse CNAME records
+                # Parse CNAME records - look for lines like "www.google.com. IN CNAME google.com."
                 elif query_type == "CNAME" and "IN CNAME" in line:
                     parts = line.split()
                     if len(parts) >= 3 and parts[-2] == "CNAME":
@@ -2635,7 +2635,7 @@ class NetHawk:
                             "description": "Canonical name alias for the domain"
                         })
                 
-                # Parse SOA records
+                # Parse SOA records - look for lines like "google.com. 60 IN SOA ns1.google.com. dns-admin.google.com. ..."
                 elif query_type == "SOA" and "IN SOA" in line:
                     parts = line.split()
                     if len(parts) >= 7 and parts[-6] == "SOA":
