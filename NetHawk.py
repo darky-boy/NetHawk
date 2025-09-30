@@ -743,6 +743,12 @@ class NetHawk:
                 target = self._suggest_common_networks()
         
         try:
+            # Validate network - handle 'mac' error
+            if target == 'mac' or target is None:
+                console.print(f"[red]Error: Invalid network format detected[/red]")
+                console.print(f"[blue]Please try again with a valid network like 192.168.1.0/24[/blue]")
+                return
+            
             # Validate network
             network = ipaddress.IPv4Network(target, strict=False)
             console.print(f"[blue]AGGRESSIVE scanning network: {network}[/blue]")
@@ -778,6 +784,7 @@ class NetHawk:
                     console.print(f"[yellow]This may take 5-15 minutes depending on number of hosts[/yellow]")
                     self._aggressive_port_scan_with_progress(hosts, port_range, scan_type)
                 
+                # Save results
                 self._save_aggressive_active_results(hosts, target)
                 
                 # Show where results are stored
@@ -785,6 +792,20 @@ class NetHawk:
                 console.print(f"[blue]Session: {self.session_path}[/blue]")
                 console.print(f"[blue]Logs: {self.logs_path}[/blue]")
                 console.print(f"[green]Look for files starting with 'aggressive_active_'[/green]")
+                
+                # List files in logs directory
+                try:
+                    if os.path.exists(self.logs_path):
+                        files = os.listdir(self.logs_path)
+                        active_files = [f for f in files if f.startswith('aggressive_active_')]
+                        if active_files:
+                            console.print(f"[green]✓ Found active scan files:[/green]")
+                            for file in active_files:
+                                console.print(f"[blue]  - {file}[/blue]")
+                        else:
+                            console.print(f"[yellow]⚠ No active scan files found in logs directory[/yellow]")
+                except Exception as e:
+                    console.print(f"[red]Error listing files: {e}[/red]")
             else:
                 console.print("[yellow]No active hosts found.[/yellow]")
                 console.print("[blue]Try scanning a different network or check your network connection[/blue]")
@@ -1048,10 +1069,12 @@ class NetHawk:
                         for i, part in enumerate(parts):
                             if part == 'src' and i + 1 < len(parts):
                                 ip = parts[i + 1]
-                                # Convert IP to network (assuming /24)
-                                network = '.'.join(ip.split('.')[:-1]) + '.0/24'
-                                console.print(f"[green]✓ Detected network: {network}[/green]")
-                                return network
+                                # Validate IP format
+                                if '.' in ip and len(ip.split('.')) == 4:
+                                    # Convert IP to network (assuming /24)
+                                    network = '.'.join(ip.split('.')[:-1]) + '.0/24'
+                                    console.print(f"[green]✓ Detected network: {network}[/green]")
+                                    return network
             
             # Fallback: try to get network from ip addr
             result = subprocess.run(["ip", "addr", "show"], capture_output=True, text=True, timeout=5)
@@ -1063,9 +1086,11 @@ class NetHawk:
                         for part in parts:
                             if '/' in part and '.' in part:
                                 ip = part.split('/')[0]
-                                network = '.'.join(ip.split('.')[:-1]) + '.0/24'
-                                console.print(f"[green]✓ Detected network: {network}[/green]")
-                                return network
+                                # Validate IP format
+                                if '.' in ip and len(ip.split('.')) == 4:
+                                    network = '.'.join(ip.split('.')[:-1]) + '.0/24'
+                                    console.print(f"[green]✓ Detected network: {network}[/green]")
+                                    return network
             
             console.print(f"[yellow]Could not auto-detect network[/yellow]")
             return None
