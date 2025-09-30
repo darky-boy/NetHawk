@@ -149,7 +149,7 @@ class NetHawk:
         """
         
         console.print(Panel(logo, title="[bold blue]NetHawk[/bold blue]", 
-                           subtitle="[italic]Professional Network Security Tool[/italic]"))
+                           subtitle="[italic]Professional Network Security Tool[/italic]\n[yellow]Made By DarCy[/yellow]"))
         console.print()
     
     def display_main_menu(self):
