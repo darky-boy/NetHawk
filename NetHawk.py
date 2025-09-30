@@ -183,7 +183,7 @@ class NetHawk:
             try:
                 choice = Prompt.ask(prompt)
                 if choice in choices:
-                return choice
+                    return choice
                 else:
                     console.print("[red]Please enter a valid option.[/red]")
             except KeyboardInterrupt:
@@ -456,7 +456,7 @@ class NetHawk:
             console.print(f"[yellow]Note: We'll try multiple methods to enable monitor mode[/yellow]")
             monitor_iface = self._set_monitor_mode(iface)
             if not monitor_iface:
-            return
+                return
 
         # Configure scan options
         console.print("\n[bold]AGGRESSIVE Scan Options:[/bold]")
@@ -484,10 +484,10 @@ class NetHawk:
             # Start the scan process
             try:
                 process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, text=True)
-        except FileNotFoundError:
+            except FileNotFoundError:
                 console.print(f"[red]Error: 'airodump-ng' command not found![/red]")
                 console.print(f"[blue]Please install aircrack-ng package: sudo apt install aircrack-ng[/blue]")
-            return
+                return
 
             # Real-time network discovery
             console.print(f"[blue]🔍 Scanning for networks...[/blue]")
@@ -803,7 +803,7 @@ class NetHawk:
         console.print(f"[blue]Testing connectivity to gateway {gateway}...[/blue]")
         if self._ping_host(gateway):
             console.print(f"[green]✓ Gateway {gateway} is reachable[/green]")
-            else:
+        else:
             console.print(f"[yellow]⚠ Gateway {gateway} not reachable, but continuing scan...[/yellow]")
         
         hosts = self._aggressive_host_discovery_with_progress(network)
@@ -1111,7 +1111,7 @@ class NetHawk:
             if mac_vendor and ("raspberry" in (mac_vendor or "").lower()):
                 confidence_score += 35
                 detected_type = "Raspberry Pi / Embedded Linux"
-        else:
+            else:
                 confidence_score += 30
                 detected_type = "Linux machine / SSH host"
             detection_methods.append("Port + OS Analysis")
@@ -1283,14 +1283,14 @@ class NetHawk:
         """AGGRESSIVE port scanning with real-time progress and results."""
         total_hosts = len(hosts)
         console.print(f"[blue]Port scanning {total_hosts} hosts...[/blue]")
-                    
-                    with Progress(
-                        SpinnerColumn(),
-                        TextColumn("[progress.description]{task.description}"),
-                        BarColumn(),
-                        TimeElapsedColumn(),
-                        console=console
-                    ) as progress:
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TimeElapsedColumn(),
+            console=console
+        ) as progress:
             task = progress.add_task("Port scanning hosts...", total=total_hosts)
             
             for i, host in enumerate(hosts):
@@ -1349,12 +1349,12 @@ class NetHawk:
                     host["nmap_output"] = result.stdout
                     
                     console.print(f"[green]✓ Found {len(open_ports)} open ports on {host['ip']}[/green]")
-                    else:
+                else:
                     console.print(f"[red]Port scan failed for {host['ip']}[/red]")
                     
             except subprocess.TimeoutExpired:
                 console.print(f"[yellow]Port scan timed out for {host['ip']}[/yellow]")
-                except Exception as e:
+            except Exception as e:
                 console.print(f"[red]Error scanning {host['ip']}: {e}[/red]")
     
     def _parse_nmap_output(self, nmap_output):
@@ -1469,8 +1469,8 @@ class NetHawk:
                         network = '.'.join(ip.split('.')[:-1]) + '.0/24'
                         return network
             
-        return None
-    
+            return None
+            
         except Exception as e:
             console.print(f"[yellow]Network detection failed: {e}[/yellow]")
             return None
@@ -1570,13 +1570,13 @@ class NetHawk:
                 deauth_process = subprocess.Popen(deauth_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             
             # Show progress for handshake capture
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            TimeElapsedColumn(),
-            console=console
-        ) as progress:
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TimeElapsedColumn(),
+                console=console
+            ) as progress:
                 task = progress.add_task("Capturing handshake...", total=30)
                 
                 for i in range(30):
@@ -1721,13 +1721,13 @@ class NetHawk:
         table.add_column("Description", style="white")
         
         for vuln in vulnerabilities:
-                table.add_row(
+            table.add_row(
                 vuln["title"],
                 vuln["severity"],
                 vuln["description"][:100] + "..." if len(vuln["description"]) > 100 else vuln["description"]
-                )
-            
-            console.print(table)
+            )
+        
+        console.print(table)
     
     def _save_vulnerabilities(self, vulnerabilities, target):
         """Save vulnerabilities to JSON."""
@@ -1753,7 +1753,7 @@ class NetHawk:
             console.print(f"[yellow]Files created:[/yellow]")
             console.print(f"[blue]  - {os.path.basename(output_file)} (Vulnerability assessment)[/blue]")
             console.print(f"[green]✓ All scan data is automatically saved to your session![/green]")
-            except Exception as e:
+        except Exception as e:
             console.print(f"[red]Error saving vulnerabilities: {e}[/red]")
     
     def web_application_scanning(self):
@@ -1833,7 +1833,7 @@ class NetHawk:
                 
         except subprocess.TimeoutExpired:
             console.print("[yellow]Web application scan timed out[/yellow]")
-            except Exception as e:
+        except Exception as e:
             console.print(f"[red]Error during web application scanning: {e}[/red]")
     
     def smb_enumeration(self):
@@ -2034,7 +2034,7 @@ class NetHawk:
                 if vuln_files:
                     for vuln_file in vuln_files:
                         f.write(f"Vulnerability Report: {vuln_file}\n")
-                        else:
+                else:
                     f.write("No vulnerability reports generated.\n")
                 f.write("\n")
                 
