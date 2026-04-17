@@ -3,6 +3,8 @@
 **NetHawk** is a comprehensive Linux network security and reconnaissance toolkit designed for ethical penetration testing and network analysis.
 
 **Made By DarCy**
+<img width="1916" height="937" alt="Screenshot 2025-12-27 190435" src="https://github.com/user-attachments/assets/ef1af74d-2498-4241-b413-228e956d14e2" />
+
 
 ## 🚀 Quick Installation
 
